@@ -39,7 +39,7 @@ jobs:
           cd android
           echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
           echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.10.2-all.zip" >> gradle/wrapper/gradle-wrapper.properties
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-all.zip" >> gradle/wrapper/gradle-wrapper.properties
           echo "networkTimeout=10000" >> gradle/wrapper/gradle-wrapper.properties
           echo "validateDistributionUrl=true" >> gradle/wrapper/gradle-wrapper.properties
           echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
