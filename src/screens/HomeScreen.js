@@ -1,7 +1,8 @@
-// Test 11: HomeScreen that uses useTheme()
+// Test 12: HomeScreen with useTheme() AND theme constants
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { SPACING, FONTS, RADIUS } from '../constants/theme';
 
 const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
@@ -14,7 +15,7 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Track your progress</Text>
             </View>
             <View style={styles.emptyState}>
-                <Text style={{ color: colors.textSecondary }}>Test 11: HomeScreen with useTheme works!</Text>
+                <Text style={{ color: colors.textSecondary }}>Test 12: Theme constants work!</Text>
             </View>
             <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]}>
                 <Text style={{ color: '#FFF', fontSize: 32 }}>+</Text>
@@ -28,15 +29,16 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: 24,
+        paddingHorizontal: SPACING.m,
+        paddingVertical: SPACING.l,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: '700',
+        fontSize: FONTS.sizes.h1,
+        fontWeight: FONTS.weights.bold,
     },
     headerSubtitle: {
-        fontSize: 14,
-        marginTop: 4,
+        fontSize: FONTS.sizes.bodySmall,
+        marginTop: SPACING.xxs,
     },
     emptyState: {
         flex: 1,
@@ -45,11 +47,11 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 32,
-        right: 32,
+        bottom: SPACING.xl,
+        right: SPACING.xl,
         width: 64,
         height: 64,
-        borderRadius: 32,
+        borderRadius: RADIUS.full,
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 5,
