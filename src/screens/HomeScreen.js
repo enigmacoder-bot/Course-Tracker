@@ -1,19 +1,22 @@
-// Test 7: Completely minimal HomeScreen - no imports from src folder
+// Test 11: HomeScreen that uses useTheme()
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const HomeScreen = ({ navigation }) => {
+    const { colors, isDarkMode } = useTheme();
+
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Learning</Text>
-                <Text style={styles.headerSubtitle}>Track your progress</Text>
+                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>My Learning</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Track your progress</Text>
             </View>
             <View style={styles.emptyState}>
-                <Text style={styles.text}>Test 7: Minimal HomeScreen works!</Text>
+                <Text style={{ color: colors.textSecondary }}>Test 11: HomeScreen with useTheme works!</Text>
             </View>
-            <TouchableOpacity style={styles.fab}>
+            <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]}>
                 <Text style={{ color: '#FFF', fontSize: 32 }}>+</Text>
             </TouchableOpacity>
         </SafeAreaView>
@@ -23,7 +26,6 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0F172A',
     },
     header: {
         padding: 24,
@@ -31,21 +33,15 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#F1F5F9',
     },
     headerSubtitle: {
         fontSize: 14,
-        color: '#94A3B8',
         marginTop: 4,
     },
     emptyState: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    text: {
-        color: '#94A3B8',
-        fontSize: 16,
     },
     fab: {
         position: 'absolute',
@@ -54,7 +50,6 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#2563EB',
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 5,
