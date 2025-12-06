@@ -1,17 +1,31 @@
-// Test 2: Adding SafeAreaProvider
+// Test 3: Adding NavigationContainer with a simple screen
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+const Stack = createNativeStackNavigator();
+
+function HomeScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>CourseTracker</Text>
+      <Text style={styles.subtext}>Test 3: Navigation works!</Text>
+      <StatusBar style="auto" />
+    </View>
+  );
+}
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.text}>CourseTracker</Text>
-        <Text style={styles.subtext}>Test 2: SafeAreaProvider works!</Text>
-        <StatusBar style="auto" />
-      </SafeAreaView>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Home" component={HomeScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }
