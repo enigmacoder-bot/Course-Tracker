@@ -1,16 +1,21 @@
-// Test 13: HomeScreen with Feather icons
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+// Test 14: HomeScreen with CourseCard import
+import React, { useState } from 'react';
+import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import CourseCard from '../components/CourseCard';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
+
+const MOCK_COURSES = [];
 
 const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
+    const [courses, setCourses] = useState(MOCK_COURSES);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+
             <View style={styles.header}>
                 <View>
                     <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>My Learning</Text>
@@ -25,9 +30,25 @@ const HomeScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-            <View style={styles.emptyState}>
-                <Text style={{ color: colors.textSecondary }}>Test 13: Feather icons work!</Text>
-            </View>
+
+            <FlatList
+                data={courses}
+                keyExtractor={item => item.id}
+                renderItem={({ item }) => (
+                    <CourseCard
+                        course={item}
+                        onPress={() => navigation.navigate('CourseDetail', { course: item })}
+                    />
+                )}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                    <View style={styles.emptyState}>
+                        <Text style={{ color: colors.textSecondary }}>Test 14: CourseCard import works!</Text>
+                    </View>
+                }
+            />
+
             <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]}>
                 <Feather name="plus" color="#FFF" size={32} />
             </TouchableOpacity>
@@ -61,10 +82,13 @@ const styles = StyleSheet.create({
     iconButton: {
         padding: SPACING.xs,
     },
+    listContent: {
+        padding: SPACING.m,
+        paddingBottom: 100,
+    },
     emptyState: {
-        flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
+        marginTop: 50,
     },
     fab: {
         position: 'absolute',
