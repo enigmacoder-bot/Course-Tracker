@@ -1,18 +1,20 @@
-// Test 3: Adding NavigationContainer with a simple screen
+// Test 4: Adding ThemeContext
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
 function HomeScreen() {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>CourseTracker</Text>
-      <Text style={styles.subtext}>Test 3: Navigation works!</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.text, { color: colors.textPrimary }]}>CourseTracker</Text>
+      <Text style={[styles.subtext, { color: colors.textSecondary }]}>Test 4: ThemeContext works!</Text>
       <StatusBar style="auto" />
     </View>
   );
@@ -21,11 +23,13 @@ function HomeScreen() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Home" component={HomeScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <ThemeProvider>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Home" component={HomeScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -33,18 +37,15 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
   },
   subtext: {
     fontSize: 16,
-    color: '#aaa',
     marginTop: 10,
   },
 });
