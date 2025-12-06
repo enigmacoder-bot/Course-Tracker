@@ -1,15 +1,18 @@
-// Minimal test to isolate crash - tests basic React Native without navigation
+// Test 2: Adding SafeAreaProvider
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>CourseTracker</Text>
-      <Text style={styles.subtext}>If you see this, the app launches!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.text}>CourseTracker</Text>
+        <Text style={styles.subtext}>Test 2: SafeAreaProvider works!</Text>
+        <StatusBar style="auto" />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
