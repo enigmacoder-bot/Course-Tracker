@@ -1,51 +1,14 @@
+// Test 6: HomeScreen without icons or complex components
 import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import CourseCard from '../components/CourseCard';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
-import { requestFolderPermission, readVideoFiles } from '../utils/fileSystem';
 
-// Mock Data (Keep for initial render if needed, or start empty)
 const MOCK_COURSES = [];
 
 const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
     const [courses, setCourses] = useState(MOCK_COURSES);
-
-    const handleAddCourse = async () => {
-        const directoryUri = await requestFolderPermission();
-        if (directoryUri) {
-            const videos = await readVideoFiles(directoryUri);
-
-            if (videos.length > 0) {
-                // Extract folder name from URI (basic decoding)
-                const folderName = decodeURIComponent(directoryUri.split('%2F').pop().split('%3A').pop());
-
-                const newCourse = {
-                    id: directoryUri,
-                    title: folderName || 'New Course',
-                    thumbnail: null,
-                    totalDuration: `${videos.length} videos`, // Placeholder
-                    videoCount: videos.length,
-                    progress: 0,
-                    videos: videos.map((v, i) => ({
-                        id: v.uri,
-                        title: v.filename,
-                        fileName: v.filename,
-                        uri: v.uri,
-                        duration: '--:--',
-                        completed: false,
-                        progress: 0,
-                    })),
-                };
-
-                setCourses(prev => [...prev, newCourse]);
-            } else {
-                alert('No videos found in this folder.');
-            }
-        }
-    };
 
     const renderHeader = () => (
         <View style={[styles.header, { backgroundColor: colors.background }]}>
@@ -57,10 +20,10 @@ const HomeScreen = ({ navigation }) => {
             </View>
             <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.iconButton}>
-                    <Feather name="search" color={colors.textPrimary} size={24} />
+                    <Text style={{ color: colors.textPrimary }}>🔍</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.iconButton}>
-                    <Feather name="settings" color={colors.textPrimary} size={24} />
+                    <Text style={{ color: colors.textPrimary }}>⚙️</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -76,25 +39,24 @@ const HomeScreen = ({ navigation }) => {
                 data={courses}
                 keyExtractor={item => item.id}
                 renderItem={({ item }) => (
-                    <CourseCard
-                        course={item}
-                        onPress={() => navigation.navigate('CourseDetail', { course: item })}
-                    />
+                    <View style={{ padding: 10 }}>
+                        <Text style={{ color: colors.textPrimary }}>{item.title}</Text>
+                    </View>
                 )}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <Text style={{ color: colors.textSecondary }}>No courses yet. Tap + to add one.</Text>
+                        <Text style={{ color: colors.textSecondary }}>Test 6: HomeScreen without icons works!</Text>
                     </View>
                 }
             />
 
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: colors.primary }]}
-                onPress={handleAddCourse}
+                onPress={() => console.log('Add pressed')}
             >
-                <Feather name="plus" color="#FFF" size={32} />
+                <Text style={{ color: '#FFF', fontSize: 32 }}>+</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );
@@ -128,7 +90,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: SPACING.m,
-        paddingBottom: 100, // Space for FAB
+        paddingBottom: 100,
     },
     emptyState: {
         alignItems: 'center',
@@ -144,10 +106,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
     },
 });
 
