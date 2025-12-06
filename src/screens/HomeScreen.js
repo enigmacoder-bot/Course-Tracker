@@ -1,61 +1,19 @@
-// Test 6: HomeScreen without icons or complex components
-import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-import { SPACING, FONTS, RADIUS } from '../constants/theme';
-
-const MOCK_COURSES = [];
+// Test 7: Completely minimal HomeScreen - no imports from src folder
+import React from 'react';
+import { View, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
 
 const HomeScreen = ({ navigation }) => {
-    const { colors, isDarkMode } = useTheme();
-    const [courses, setCourses] = useState(MOCK_COURSES);
-
-    const renderHeader = () => (
-        <View style={[styles.header, { backgroundColor: colors.background }]}>
-            <View>
-                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>My Learning</Text>
-                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-                    Track your progress
-                </Text>
-            </View>
-            <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.iconButton}>
-                    <Text style={{ color: colors.textPrimary }}>🔍</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconButton}>
-                    <Text style={{ color: colors.textPrimary }}>⚙️</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-
-            {renderHeader()}
-
-            <FlatList
-                data={courses}
-                keyExtractor={item => item.id}
-                renderItem={({ item }) => (
-                    <View style={{ padding: 10 }}>
-                        <Text style={{ color: colors.textPrimary }}>{item.title}</Text>
-                    </View>
-                )}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                        <Text style={{ color: colors.textSecondary }}>Test 6: HomeScreen without icons works!</Text>
-                    </View>
-                }
-            />
-
-            <TouchableOpacity
-                style={[styles.fab, { backgroundColor: colors.primary }]}
-                onPress={() => console.log('Add pressed')}
-            >
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>My Learning</Text>
+                <Text style={styles.headerSubtitle}>Track your progress</Text>
+            </View>
+            <View style={styles.emptyState}>
+                <Text style={styles.text}>Test 7: Minimal HomeScreen works!</Text>
+            </View>
+            <TouchableOpacity style={styles.fab}>
                 <Text style={{ color: '#FFF', fontSize: 32 }}>+</Text>
             </TouchableOpacity>
         </SafeAreaView>
@@ -65,44 +23,38 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#0F172A',
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: SPACING.m,
-        paddingVertical: SPACING.l,
+        padding: 24,
     },
     headerTitle: {
-        fontSize: FONTS.sizes.h1,
-        fontWeight: FONTS.weights.bold,
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#F1F5F9',
     },
     headerSubtitle: {
-        fontSize: FONTS.sizes.bodySmall,
-        marginTop: SPACING.xxs,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        gap: SPACING.m,
-    },
-    iconButton: {
-        padding: SPACING.xs,
-    },
-    listContent: {
-        padding: SPACING.m,
-        paddingBottom: 100,
+        fontSize: 14,
+        color: '#94A3B8',
+        marginTop: 4,
     },
     emptyState: {
+        flex: 1,
         alignItems: 'center',
-        marginTop: 50,
+        justifyContent: 'center',
+    },
+    text: {
+        color: '#94A3B8',
+        fontSize: 16,
     },
     fab: {
         position: 'absolute',
-        bottom: SPACING.xl,
-        right: SPACING.xl,
+        bottom: 32,
+        right: 32,
         width: 64,
         height: 64,
-        borderRadius: RADIUS.full,
+        borderRadius: 32,
+        backgroundColor: '#2563EB',
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 5,
