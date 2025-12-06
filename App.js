@@ -1,22 +1,35 @@
-// Test 4: Adding ThemeContext
+// Test 5: Using actual HomeScreen
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import HomeScreen from './src/screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
 
-function HomeScreen() {
-  const { colors } = useTheme();
+function AppContent() {
+  const { colors, isDarkMode } = useTheme();
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.text, { color: colors.textPrimary }]}>CourseTracker</Text>
-      <Text style={[styles.subtext, { color: colors.textSecondary }]}>Test 4: ThemeContext works!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer theme={{
+      dark: isDarkMode,
+      colors: {
+        primary: colors.primary,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.textPrimary,
+        border: colors.border,
+        notification: colors.secondary,
+      }
+    }}>
+      <Stack.Navigator screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}>
+        <Stack.Screen name="Home" component={HomeScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
@@ -24,28 +37,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Home" component={HomeScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <AppContent />
       </ThemeProvider>
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  text: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  subtext: {
-    fontSize: 16,
-    marginTop: 10,
-  },
-});
