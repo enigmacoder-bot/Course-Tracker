@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Play, CheckCircle, Circle, Clock } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { SPACING, RADIUS, FONTS } from '../constants/theme';
 
@@ -9,12 +9,12 @@ const VideoListItem = ({ video, onPress, isActive }) => {
 
     const getStatusIcon = () => {
         if (video.completed) {
-            return <CheckCircle size={24} color={colors.success} fill={colors.surface} />;
+            return <Feather name="check-circle" size={24} color={colors.success} />;
         }
         if (video.progress > 0) {
-            return <Clock size={24} color={colors.warning} />;
+            return <Feather name="clock" size={24} color={colors.warning} />;
         }
-        return <Circle size={24} color={colors.textSecondary} />;
+        return <Feather name="circle" size={24} color={colors.textSecondary} />;
     };
 
     return (
@@ -29,7 +29,7 @@ const VideoListItem = ({ video, onPress, isActive }) => {
             {/* Thumbnail */}
             <View style={styles.thumbnailContainer}>
                 <View style={[styles.thumbnailPlaceholder, { backgroundColor: colors.border }]}>
-                    <Play size={20} color={colors.textSecondary} />
+                    <Feather name="play" size={20} color={colors.textSecondary} />
                 </View>
                 <View style={styles.durationBadge}>
                     <Text style={styles.durationText}>{video.duration || '--:--'}</Text>

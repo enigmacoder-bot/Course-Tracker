@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, StatusBar } from 'react-native';
-import { ArrowLeft, MoreVertical, PlayCircle } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import VideoListItem from '../components/VideoListItem';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
@@ -12,11 +12,11 @@ const CourseDetailScreen = ({ navigation, route }) => {
     const renderHeader = () => (
         <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-                <ArrowLeft color="#FFF" size={24} />
+                <Feather name="arrow-left" color="#FFF" size={24} />
             </TouchableOpacity>
             <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.iconButton}>
-                    <MoreVertical color="#FFF" size={24} />
+                    <Feather name="more-vertical" color="#FFF" size={24} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -34,7 +34,7 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 </View>
 
                 <TouchableOpacity style={styles.resumeButton}>
-                    <PlayCircle color={colors.primary} size={20} fill="#FFF" />
+                    <Feather name="play-circle" color={colors.primary} size={20} />
                     <Text style={[styles.resumeText, { color: colors.primary }]}>Resume Learning</Text>
                 </TouchableOpacity>
             </View>

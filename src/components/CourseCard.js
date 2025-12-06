@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Play } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { SPACING, RADIUS, SHADOWS, FONTS } from '../constants/theme';
 
@@ -23,7 +23,7 @@ const CourseCard = ({ course, onPress }) => {
                     <Image source={{ uri: course.thumbnail }} style={styles.thumbnail} resizeMode="cover" />
                 ) : (
                     <View style={[styles.placeholderThumbnail, { backgroundColor: colors.border }]}>
-                        <Play size={32} color={colors.textSecondary} />
+                        <Feather name="play" size={32} color={colors.textSecondary} />
                     </View>
                 )}
 

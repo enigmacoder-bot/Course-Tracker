@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity } from 'react-native';
-import { Plus, Settings, Search } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import CourseCard from '../components/CourseCard';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
@@ -57,10 +57,10 @@ const HomeScreen = ({ navigation }) => {
             </View>
             <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.iconButton}>
-                    <Search color={colors.textPrimary} size={24} />
+                    <Feather name="search" color={colors.textPrimary} size={24} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.iconButton}>
-                    <Settings color={colors.textPrimary} size={24} />
+                    <Feather name="settings" color={colors.textPrimary} size={24} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -94,7 +94,7 @@ const HomeScreen = ({ navigation }) => {
                 style={[styles.fab, { backgroundColor: colors.primary }]}
                 onPress={handleAddCourse}
             >
-                <Plus color="#FFF" size={32} />
+                <Feather name="plus" color="#FFF" size={32} />
             </TouchableOpacity>
         </SafeAreaView>
     );

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, StatusBar, Dimensions } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Maximize2 } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
 
@@ -59,7 +59,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
                         {/* Top Bar */}
                         <View style={styles.topBar}>
                             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-                                <ArrowLeft color="#FFF" size={24} />
+                                <Feather name="arrow-left" color="#FFF" size={24} />
                             </TouchableOpacity>
                             <Text style={styles.videoTitle} numberOfLines={1}>{title}</Text>
                             <View style={{ width: 40 }} />
@@ -71,7 +71,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
                                 style={styles.skipButton}
                                 onPress={() => video.current.setPositionAsync(status.positionMillis - 10000)}
                             >
-                                <SkipBack color="#FFF" size={32} />
+                                <Feather name="skip-back" color="#FFF" size={32} />
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -79,9 +79,9 @@ const VideoPlayerScreen = ({ navigation, route }) => {
                                 onPress={() => status.isPlaying ? video.current.pauseAsync() : video.current.playAsync()}
                             >
                                 {status.isPlaying ? (
-                                    <Pause color="#000" size={32} fill="#000" />
+                                    <Feather name="pause" color="#000" size={32} />
                                 ) : (
-                                    <Play color="#000" size={32} fill="#000" />
+                                    <Feather name="play" color="#000" size={32} />
                                 )}
                             </TouchableOpacity>
 
@@ -89,7 +89,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
                                 style={styles.skipButton}
                                 onPress={() => video.current.setPositionAsync(status.positionMillis + 10000)}
                             >
-                                <SkipForward color="#FFF" size={32} />
+                                <Feather name="skip-forward" color="#FFF" size={32} />
                             </TouchableOpacity>
                         </View>
 
@@ -110,7 +110,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
                             <Text style={styles.timeText}>{formatTime(status.durationMillis)}</Text>
 
                             <TouchableOpacity style={styles.iconButton}>
-                                <Maximize2 color="#FFF" size={20} />
+                                <Feather name="maximize-2" color="#FFF" size={20} />
                             </TouchableOpacity>
                         </View>
                     </View>
