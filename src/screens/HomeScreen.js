@@ -1,16 +1,50 @@
-// Test 14: HomeScreen with CourseCard import
+// Test 15: Complete HomeScreen with fileSystem utils
 import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import CourseCard from '../components/CourseCard';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
+import { requestFolderPermission, readVideoFiles } from '../utils/fileSystem';
 
 const MOCK_COURSES = [];
 
 const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
     const [courses, setCourses] = useState(MOCK_COURSES);
+
+    const handleAddCourse = async () => {
+        const directoryUri = await requestFolderPermission();
+        if (directoryUri) {
+            const videos = await readVideoFiles(directoryUri);
+
+            if (videos.length > 0) {
+                const folderName = decodeURIComponent(directoryUri.split('%2F').pop().split('%3A').pop());
+
+                const newCourse = {
+                    id: directoryUri,
+                    title: folderName || 'New Course',
+                    thumbnail: null,
+                    totalDuration: `${videos.length} videos`,
+                    videoCount: videos.length,
+                    progress: 0,
+                    videos: videos.map((v, i) => ({
+                        id: v.uri,
+                        title: v.filename,
+                        fileName: v.filename,
+                        uri: v.uri,
+                        duration: '--:--',
+                        completed: false,
+                        progress: 0,
+                    })),
+                };
+
+                setCourses(prev => [...prev, newCourse]);
+            } else {
+                alert('No videos found in this folder.');
+            }
+        }
+    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -44,12 +78,15 @@ const HomeScreen = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <Text style={{ color: colors.textSecondary }}>Test 14: CourseCard import works!</Text>
+                        <Text style={{ color: colors.textSecondary }}>Test 15: fileSystem works! Tap + to add a course.</Text>
                     </View>
                 }
             />
 
-            <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]}>
+            <TouchableOpacity
+                style={[styles.fab, { backgroundColor: colors.primary }]}
+                onPress={handleAddCourse}
+            >
                 <Feather name="plus" color="#FFF" size={32} />
             </TouchableOpacity>
         </SafeAreaView>
