@@ -38,45 +38,12 @@ jobs:
         run: |
           echo 'android { buildTypes { release { signingConfig signingConfigs.debug } } }' >> android/app/build.gradle
       
-      - name: Update Gradle wrapper
-        run: |
-          cd android
-          echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
-          echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.8-all.zip" >> gradle/wrapper/gradle-wrapper.properties
-          echo "networkTimeout=10000" >> gradle/wrapper/gradle-wrapper.properties
-          echo "validateDistributionUrl=true" >> gradle/wrapper/gradle-wrapper.properties
-          echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
-          echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-      
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
       
-      - name: Clean Gradle cache
-        working-directory: android
-        run: ./gradlew clean --refresh-dependencies
-      
       - name: Build release APK
         working-directory: android
-        run: |
-          max_attempts=3
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            echo "Build attempt $attempt of $max_attempts"
-            if ./gradlew assembleRelease --stacktrace; then
-              echo "APK Build successful!"
-              break
-            else
-              echo "Build failed on attempt $attempt"
-              if [ $attempt -eq $max_attempts ]; then
-                echo "All build attempts failed"
-                exit 1
-              fi
-              echo "Waiting 30 seconds before retry..."
-              sleep 30
-              attempt=$((attempt + 1))
-            fi
-          done
+        run: ./gradlew assembleRelease --stacktrace
       
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
