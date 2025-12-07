@@ -24,6 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
       
       - name: Install dependencies
         run: npm install
@@ -34,6 +35,12 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
       
+      - name: Fix Gradle wrapper for SDK 52
+        run: |
+          cd android
+          # Use Gradle 8.6 which is compatible with Expo SDK 52
+          sed -i 's/gradle-.*-all.zip/gradle-8.6-all.zip/' gradle/wrapper/gradle-wrapper.properties
+      
       - name: Configure release build signing
         run: |
           echo 'android { buildTypes { release { signingConfig signingConfigs.debug } } }' >> android/app/build.gradle
@@ -43,7 +50,7 @@ jobs:
       
       - name: Build release APK
         working-directory: android
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
       
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
