@@ -2,22 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { SPACING, RADIUS, SHADOWS, FONTS } from '../constants/theme';
 
 const CourseCard = ({ course, onPress }) => {
     const { colors } = useTheme();
 
     return (
         <TouchableOpacity
-            style={[
-                styles.card,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-                SHADOWS.light,
-            ]}
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={onPress}
             activeOpacity={0.9}
         >
-            {/* Thumbnail Area */}
             <View style={styles.thumbnailContainer}>
                 {course.thumbnail ? (
                     <Image source={{ uri: course.thumbnail }} style={styles.thumbnail} resizeMode="cover" />
@@ -26,43 +20,21 @@ const CourseCard = ({ course, onPress }) => {
                         <Feather name="play" size={32} color={colors.textSecondary} />
                     </View>
                 )}
-
-                {/* Duration Badge */}
                 <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{course.totalDuration || '0h 0m'}</Text>
+                    <Text style={styles.badgeText}>{course.totalDuration || '0 videos'}</Text>
                 </View>
             </View>
 
-            {/* Content Area */}
             <View style={styles.content}>
-                <Text
-                    style={[styles.title, { color: colors.textPrimary }]}
-                    numberOfLines={2}
-                >
+                <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
                     {course.title}
                 </Text>
-
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                     {course.videoCount || 0} videos
                 </Text>
-
-                {/* Progress Bar */}
                 <View style={styles.progressContainer}>
-                    <View
-                        style={[
-                            styles.progressBarBackground,
-                            { backgroundColor: colors.border }
-                        ]}
-                    >
-                        <View
-                            style={[
-                                styles.progressBarFill,
-                                {
-                                    backgroundColor: colors.primary,
-                                    width: `${course.progress || 0}%`
-                                }
-                            ]}
-                        />
+                    <View style={[styles.progressBarBackground, { backgroundColor: colors.border }]}>
+                        <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${course.progress || 0}%` }]} />
                     </View>
                     <Text style={[styles.progressText, { color: colors.textSecondary }]}>
                         {Math.round(course.progress || 0)}%
@@ -74,74 +46,19 @@ const CourseCard = ({ course, onPress }) => {
 };
 
 const styles = StyleSheet.create({
-    card: {
-        borderRadius: RADIUS.m,
-        borderWidth: 1,
-        marginBottom: SPACING.m,
-        overflow: 'hidden',
-    },
-    thumbnailContainer: {
-        height: 180,
-        width: '100%',
-        position: 'relative',
-    },
-    thumbnail: {
-        width: '100%',
-        height: '100%',
-    },
-    placeholderThumbnail: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    badge: {
-        position: 'absolute',
-        bottom: SPACING.xs,
-        right: SPACING.xs,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        paddingHorizontal: SPACING.xs,
-        paddingVertical: 2,
-        borderRadius: RADIUS.s,
-    },
-    badgeText: {
-        color: '#FFF',
-        fontSize: FONTS.sizes.caption,
-        fontWeight: FONTS.weights.medium,
-    },
-    content: {
-        padding: SPACING.m,
-    },
-    title: {
-        fontSize: FONTS.sizes.h3,
-        fontWeight: FONTS.weights.semibold,
-        marginBottom: SPACING.xs,
-    },
-    subtitle: {
-        fontSize: FONTS.sizes.bodySmall,
-        marginBottom: SPACING.s,
-    },
-    progressContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACING.xs,
-    },
-    progressBarBackground: {
-        flex: 1,
-        height: 8,
-        borderRadius: RADIUS.full,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: RADIUS.full,
-    },
-    progressText: {
-        fontSize: FONTS.sizes.caption,
-        fontWeight: FONTS.weights.medium,
-        width: 35,
-        textAlign: 'right',
-    },
+    card: { borderRadius: 12, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
+    thumbnailContainer: { height: 180, width: '100%', position: 'relative' },
+    thumbnail: { width: '100%', height: '100%' },
+    placeholderThumbnail: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+    badge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+    badgeText: { color: '#FFF', fontSize: 12, fontWeight: '500' },
+    content: { padding: 16 },
+    title: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
+    subtitle: { fontSize: 14, marginBottom: 12 },
+    progressContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    progressBarBackground: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 4 },
+    progressText: { fontSize: 12, fontWeight: '500', width: 35, textAlign: 'right' },
 });
 
 export default CourseCard;
