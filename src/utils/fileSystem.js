@@ -204,6 +204,92 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
 };
 
 /**
+ * Read a course folder preserving its structure (sections/folders)
+ * Returns: { rootVideos: [...], sections: [{ name, uri, videos: [...] }, ...] }
+ * This allows displaying Week 1, Week 2, etc. as navigable sections
+ */
+export const readCourseStructure = async (directoryUri) => {
+    try {
+        console.log('Reading course structure...');
+        const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
+
+        const rootVideos = [];
+        const sections = [];
+
+        // Process all entries in parallel
+        await Promise.all(
+            entries.map(async (uri) => {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
+
+                // Check if it's a video file
+                if (isVideoFile(name)) {
+                    rootVideos.push({
+                        id: uri,
+                        uri,
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    return;
+                }
+
+                // Check if it looks like a file with extension (skip non-video files)
+                const hasExtension = /\.[a-zA-Z0-9]{1,5}$/.test(name);
+                if (hasExtension) {
+                    return;
+                }
+
+                // Try to read as directory (this is a section/folder)
+                try {
+                    const sectionVideos = await readVideoFiles(uri);
+                    if (sectionVideos.length > 0) {
+                        sections.push({
+                            id: uri,
+                            uri,
+                            name,
+                            videos: sectionVideos.map(v => ({
+                                id: v.uri,
+                                uri: v.uri,
+                                filename: v.filename,
+                                title: v.filename.replace(/\.[^/.]+$/, ''),
+                                completed: false,
+                                progress: 0,
+                            })),
+                        });
+                    }
+                } catch (e) {
+                    // Not a directory, skip
+                }
+            })
+        );
+
+        // Sort sections alphabetically
+        sections.sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        // Sort root videos
+        rootVideos.sort((a, b) =>
+            a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        const totalVideos = rootVideos.length + sections.reduce((sum, s) => sum + s.videos.length, 0);
+        console.log(`Found ${totalVideos} videos in ${sections.length} sections`);
+
+        return {
+            rootVideos,
+            sections,
+            totalVideos,
+        };
+    } catch (error) {
+        console.error('Error reading course structure:', error);
+        return { rootVideos: [], sections: [], totalVideos: 0 };
+    }
+};
+
+/**
  * Get folder name from SAF URI
  */
 export const getFolderName = (directoryUri) => {

@@ -111,10 +111,13 @@ const FolderPickerScreen = ({ navigation }) => {
         setLoading(true);
 
         try {
-            // Get all videos recursively from this folder
-            const videos = await readVideoFiles(currentUri);
+            // Import the structured reader
+            const { readCourseStructure } = require('../utils/fileSystem');
 
-            if (videos.length === 0) {
+            // Get course structure preserving folders as sections
+            const structure = await readCourseStructure(currentUri);
+
+            if (structure.totalVideos === 0) {
                 Alert.alert('No Videos', 'No video files found in this folder or its subfolders.');
                 setLoading(false);
                 return;
@@ -128,17 +131,17 @@ const FolderPickerScreen = ({ navigation }) => {
                 id: currentUri,
                 title: folderName,
                 thumbnail: null,
-                videoCount: videos.length,
+                videoCount: structure.totalVideos,
                 progress: 0,
-                videos: videos.map((v) => ({
-                    id: v.uri,
-                    title: v.filename.replace(/\.[^/.]+$/, ''),
-                    fileName: v.filename,
-                    uri: v.uri,
-                    duration: '--:--',
-                    completed: false,
-                    progress: 0,
-                })),
+                // Keep sections (Week 1, Week 2, etc.) for in-course navigation
+                sections: structure.sections,
+                // Root-level videos (not in any subfolder)
+                rootVideos: structure.rootVideos,
+                // Flattened videos for backwards compatibility
+                videos: [
+                    ...structure.rootVideos,
+                    ...structure.sections.flatMap(s => s.videos),
+                ],
             };
 
             navigation.navigate('Home', { newCourse });
