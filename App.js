@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -13,18 +13,22 @@ const Stack = createNativeStackNavigator();
 function AppContent() {
   const { colors, isDarkMode } = useTheme();
 
+  // Use React Navigation's default theme as base and override colors only
+  const navigationTheme = {
+    ...(isDarkMode ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDarkMode ? DarkTheme.colors : DefaultTheme.colors),
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+      notification: colors.secondary,
+    },
+  };
+
   return (
-    <NavigationContainer theme={{
-      dark: isDarkMode,
-      colors: {
-        primary: colors.primary,
-        background: colors.background,
-        card: colors.surface,
-        text: colors.textPrimary,
-        border: colors.border,
-        notification: colors.secondary,
-      }
-    }}>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
