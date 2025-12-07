@@ -20,50 +20,60 @@ export const requestFolderPermission = async () => {
 
 /**
  * Recursively read all video files from a directory (up to 10 levels deep)
+ * Optimized for parallel processing to improve performance
  */
 export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth = 0) => {
     if (currentDepth >= maxDepth) {
-        console.log(`Max depth ${maxDepth} reached`);
         return [];
     }
 
     try {
         const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
-        const videoFiles = [];
 
-        console.log(`Scanning depth ${currentDepth}: found ${entries.length} entries`);
-
-        for (const uri of entries) {
-            const decodedUri = decodeURIComponent(uri);
-            const filename = decodedUri.split('/').pop();
-
-            // Check if this is a video file
-            if (VIDEO_EXTENSIONS.test(filename)) {
-                videoFiles.push({
-                    uri,
-                    filename: filename,
-                });
-                console.log(`Found video: ${filename}`);
-            } else {
-                // Try to read as directory - this is the most reliable way to check
-                try {
-                    const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
-                    console.log(`Found folder: ${filename} with ${subEntries.length} items`);
-
-                    // Recursively get videos from subdirectory
-                    const subFiles = await readVideoFiles(uri, maxDepth, currentDepth + 1);
-                    videoFiles.push(...subFiles);
-                } catch (e) {
-                    // Not a directory, might be a non-video file - skip
-                    console.log(`Skipping: ${filename}`);
-                }
-            }
+        if (currentDepth === 0) {
+            console.log(`Scanning ${entries.length} items...`);
         }
 
-        // Sort videos naturally (1, 2, 10 instead of 1, 10, 2)
-        videoFiles.sort((a, b) =>
-            a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+        // Process all entries in parallel
+        const results = await Promise.all(
+            entries.map(async (uri) => {
+                const decodedUri = decodeURIComponent(uri);
+                const filename = decodedUri.split('/').pop();
+
+                // Quick check: if it's a video file, return immediately
+                if (VIDEO_EXTENSIONS.test(filename)) {
+                    return [{ uri, filename }];
+                }
+
+                // Check if it looks like a file with non-video extension
+                // Files typically have extensions with 2-5 characters
+                const hasExtension = /\.[a-zA-Z0-9]{1,5}$/.test(filename);
+                if (hasExtension) {
+                    // It's a non-video file, skip
+                    return [];
+                }
+
+                // Try to process as directory
+                try {
+                    const subFiles = await readVideoFiles(uri, maxDepth, currentDepth + 1);
+                    return subFiles;
+                } catch (e) {
+                    // Not a directory or can't read, skip
+                    return [];
+                }
+            })
         );
+
+        // Flatten all results
+        const videoFiles = results.flat();
+
+        // Only sort at the top level to avoid redundant sorting
+        if (currentDepth === 0) {
+            videoFiles.sort((a, b) =>
+                a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+            );
+            console.log(`Found ${videoFiles.length} videos`);
+        }
 
         return videoFiles;
     } catch (error) {

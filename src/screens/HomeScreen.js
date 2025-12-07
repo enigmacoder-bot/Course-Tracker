@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { requestFolderPermission, readVideoFiles, getFolderName } from '../utils/fileSystem';
 
 // Inline CourseCard
 const CourseCard = ({ course, onPress, colors }) => (
@@ -31,48 +30,27 @@ const CourseCard = ({ course, onPress, colors }) => (
     </TouchableOpacity>
 );
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = ({ navigation, route }) => {
     const { colors, isDarkMode } = useTheme();
     const [courses, setCourses] = useState([]);
-    const [loading, setLoading] = useState(false);
 
-    const handleAddCourse = async () => {
-        try {
-            const directoryUri = await requestFolderPermission();
-            if (directoryUri) {
-                setLoading(true);
-                const videos = await readVideoFiles(directoryUri);
-
-                if (videos.length > 0) {
-                    const folderName = getFolderName(directoryUri);
-                    const newCourse = {
-                        id: directoryUri,
-                        title: folderName,
-                        thumbnail: null,
-                        totalDuration: `${videos.length} videos`,
-                        videoCount: videos.length,
-                        progress: 0,
-                        videos: videos.map((v, i) => ({
-                            id: v.uri,
-                            title: v.filename.replace(/\.[^/.]+$/, ''),
-                            fileName: v.filename,
-                            uri: v.uri,
-                            duration: '--:--',
-                            completed: false,
-                            progress: 0,
-                        })),
-                    };
-                    setCourses(prev => [...prev, newCourse]);
-                } else {
-                    alert('No videos found in this folder or subfolders.');
-                }
-                setLoading(false);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            setLoading(false);
-            alert('Error scanning folder.');
+    // Handle incoming course from FolderPickerScreen
+    useEffect(() => {
+        if (route.params?.newCourse) {
+            setCourses(prev => {
+                // Avoid duplicates
+                const exists = prev.some(c => c.id === route.params.newCourse.id);
+                if (exists) return prev;
+                return [...prev, route.params.newCourse];
+            });
+            // Clear the param to avoid re-adding on subsequent navigations
+            navigation.setParams({ newCourse: undefined });
         }
+    }, [route.params?.newCourse]);
+
+    const handleAddCourse = () => {
+        // Navigate to folder picker (instant MediaStore scanning)
+        navigation.navigate('FolderPicker');
     };
 
     return (
@@ -111,13 +89,8 @@ const HomeScreen = ({ navigation }) => {
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: colors.primary }]}
                 onPress={handleAddCourse}
-                disabled={loading}
             >
-                {loading ? (
-                    <ActivityIndicator color="#FFF" />
-                ) : (
-                    <Feather name="plus" color="#FFF" size={28} />
-                )}
+                <Feather name="plus" color="#FFF" size={28} />
             </TouchableOpacity>
         </SafeAreaView>
     );

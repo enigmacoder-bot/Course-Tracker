@@ -39,6 +39,13 @@
             "minSdkVersion": 26
           }
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow CourseTracker to access your videos to track course progress.",
+          "isAccessMediaLocationEnabled": true
+        }
       ]
     ],
     "web": {

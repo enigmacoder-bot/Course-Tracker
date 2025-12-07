@@ -7,6 +7,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import HomeScreen from './src/screens/HomeScreen';
 import CourseDetailScreen from './src/screens/CourseDetailScreen';
 import VideoPlayerScreen from './src/screens/VideoPlayerScreen';
+import FolderPickerScreen from './src/screens/FolderPickerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,7 @@ function AppContent() {
         contentStyle: { backgroundColor: colors.background },
       }}>
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="FolderPicker" component={FolderPickerScreen} />
         <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
         <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
       </Stack.Navigator>
