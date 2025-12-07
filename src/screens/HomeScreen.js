@@ -1,48 +1,57 @@
-// Test 15: Complete HomeScreen with fileSystem utils
 import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity } from 'react-native';
+import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import CourseCard from '../components/CourseCard';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
-import { requestFolderPermission, readVideoFiles } from '../utils/fileSystem';
-
-const MOCK_COURSES = [];
+import { requestFolderPermission, readVideoFiles, getFolderName } from '../utils/fileSystem';
 
 const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
-    const [courses, setCourses] = useState(MOCK_COURSES);
+    const [courses, setCourses] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     const handleAddCourse = async () => {
-        const directoryUri = await requestFolderPermission();
-        if (directoryUri) {
-            const videos = await readVideoFiles(directoryUri);
+        try {
+            const directoryUri = await requestFolderPermission();
+            if (directoryUri) {
+                setLoading(true);
 
-            if (videos.length > 0) {
-                const folderName = decodeURIComponent(directoryUri.split('%2F').pop().split('%3A').pop());
+                // Recursively scan for videos in nested folders
+                const videos = await readVideoFiles(directoryUri);
 
-                const newCourse = {
-                    id: directoryUri,
-                    title: folderName || 'New Course',
-                    thumbnail: null,
-                    totalDuration: `${videos.length} videos`,
-                    videoCount: videos.length,
-                    progress: 0,
-                    videos: videos.map((v, i) => ({
-                        id: v.uri,
-                        title: v.filename,
-                        fileName: v.filename,
-                        uri: v.uri,
-                        duration: '--:--',
-                        completed: false,
+                if (videos.length > 0) {
+                    const folderName = getFolderName(directoryUri);
+
+                    const newCourse = {
+                        id: directoryUri,
+                        title: folderName,
+                        thumbnail: null,
+                        totalDuration: `${videos.length} videos`,
+                        videoCount: videos.length,
                         progress: 0,
-                    })),
-                };
+                        videos: videos.map((v, i) => ({
+                            id: v.uri,
+                            title: v.filename.replace(/\.[^/.]+$/, ''), // Remove extension from title
+                            fileName: v.filename,
+                            uri: v.uri,
+                            duration: '--:--',
+                            completed: false,
+                            progress: 0,
+                            index: i + 1,
+                        })),
+                    };
 
-                setCourses(prev => [...prev, newCourse]);
-            } else {
-                alert('No videos found in this folder.');
+                    setCourses(prev => [...prev, newCourse]);
+                } else {
+                    alert('No videos found in this folder or its subfolders.');
+                }
+                setLoading(false);
             }
+        } catch (error) {
+            console.error('Error adding course:', error);
+            setLoading(false);
+            alert('Error scanning folder for videos.');
         }
     };
 
@@ -78,7 +87,11 @@ const HomeScreen = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <Text style={{ color: colors.textSecondary }}>Test 15: fileSystem works! Tap + to add a course.</Text>
+                        <Feather name="folder-plus" size={64} color={colors.border} />
+                        <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No courses yet</Text>
+                        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                            Tap the + button to add a course folder.{'\n'}Videos in subfolders will be included.
+                        </Text>
                     </View>
                 }
             />
@@ -86,17 +99,20 @@ const HomeScreen = ({ navigation }) => {
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: colors.primary }]}
                 onPress={handleAddCourse}
+                disabled={loading}
             >
-                <Feather name="plus" color="#FFF" size={32} />
+                {loading ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                    <Feather name="plus" color="#FFF" size={32} />
+                )}
             </TouchableOpacity>
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -104,29 +120,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.m,
         paddingVertical: SPACING.l,
     },
-    headerTitle: {
-        fontSize: FONTS.sizes.h1,
-        fontWeight: FONTS.weights.bold,
-    },
-    headerSubtitle: {
-        fontSize: FONTS.sizes.bodySmall,
-        marginTop: SPACING.xxs,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        gap: SPACING.m,
-    },
-    iconButton: {
-        padding: SPACING.xs,
-    },
-    listContent: {
-        padding: SPACING.m,
-        paddingBottom: 100,
-    },
-    emptyState: {
-        alignItems: 'center',
-        marginTop: 50,
-    },
+    headerTitle: { fontSize: FONTS.sizes.h1, fontWeight: FONTS.weights.bold },
+    headerSubtitle: { fontSize: FONTS.sizes.bodySmall, marginTop: SPACING.xxs },
+    headerActions: { flexDirection: 'row', gap: SPACING.m },
+    iconButton: { padding: SPACING.xs },
+    listContent: { padding: SPACING.m, paddingBottom: 100 },
+    emptyState: { alignItems: 'center', marginTop: 80, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 20, fontWeight: '600', marginTop: 16 },
+    emptySubtitle: { fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 },
     fab: {
         position: 'absolute',
         bottom: SPACING.xl,
