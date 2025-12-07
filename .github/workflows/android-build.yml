@@ -39,7 +39,7 @@ jobs:
         run: |
           cd android
           # Use Gradle 8.6 which is compatible with Expo SDK 52
-          sed -i 's/gradle-.*-all.zip/gradle-8.6-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/gradle-.*-all.zip/gradle-8.7-all.zip/' gradle/wrapper/gradle-wrapper.properties
       
       - name: Configure release build signing
         run: |
