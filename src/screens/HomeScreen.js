@@ -2,9 +2,35 @@ import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import CourseCard from '../components/CourseCard';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
 import { requestFolderPermission, readVideoFiles, getFolderName } from '../utils/fileSystem';
+
+// Inline CourseCard to avoid import issues
+const CourseCard = ({ course, onPress, colors }) => (
+    <TouchableOpacity
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={onPress}
+        activeOpacity={0.9}
+    >
+        <View style={[styles.cardThumbnail, { backgroundColor: colors.border }]}>
+            <Feather name="play-circle" size={40} color={colors.textSecondary} />
+        </View>
+        <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+                {course.title}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                {course.videoCount} videos
+            </Text>
+            <View style={styles.progressContainer}>
+                <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
+                    <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${course.progress || 0}%` }]} />
+                </View>
+                <Text style={[styles.progressText, { color: colors.textSecondary }]}>{course.progress || 0}%</Text>
+            </View>
+        </View>
+    </TouchableOpacity>
+);
 
 const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
@@ -16,13 +42,10 @@ const HomeScreen = ({ navigation }) => {
             const directoryUri = await requestFolderPermission();
             if (directoryUri) {
                 setLoading(true);
-
-                // Recursively scan for videos in nested folders
                 const videos = await readVideoFiles(directoryUri);
 
                 if (videos.length > 0) {
                     const folderName = getFolderName(directoryUri);
-
                     const newCourse = {
                         id: directoryUri,
                         title: folderName,
@@ -32,26 +55,24 @@ const HomeScreen = ({ navigation }) => {
                         progress: 0,
                         videos: videos.map((v, i) => ({
                             id: v.uri,
-                            title: v.filename.replace(/\.[^/.]+$/, ''), // Remove extension from title
+                            title: v.filename.replace(/\.[^/.]+$/, ''),
                             fileName: v.filename,
                             uri: v.uri,
                             duration: '--:--',
                             completed: false,
                             progress: 0,
-                            index: i + 1,
                         })),
                     };
-
                     setCourses(prev => [...prev, newCourse]);
                 } else {
-                    alert('No videos found in this folder or its subfolders.');
+                    alert('No videos found in this folder or subfolders.');
                 }
                 setLoading(false);
             }
         } catch (error) {
-            console.error('Error adding course:', error);
+            console.error('Error:', error);
             setLoading(false);
-            alert('Error scanning folder for videos.');
+            alert('Error scanning folder.');
         }
     };
 
@@ -61,16 +82,8 @@ const HomeScreen = ({ navigation }) => {
 
             <View style={styles.header}>
                 <View>
-                    <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>My Learning</Text>
-                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Track your progress</Text>
-                </View>
-                <View style={styles.headerActions}>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <Feather name="search" color={colors.textPrimary} size={24} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <Feather name="settings" color={colors.textPrimary} size={24} />
-                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>My Learning</Text>
+                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Track your progress</Text>
                 </View>
             </View>
 
@@ -80,17 +93,17 @@ const HomeScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                     <CourseCard
                         course={item}
+                        colors={colors}
                         onPress={() => navigation.navigate('CourseDetail', { course: item })}
                     />
                 )}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.list}
                 ListEmptyComponent={
-                    <View style={styles.emptyState}>
+                    <View style={styles.empty}>
                         <Feather name="folder-plus" size={64} color={colors.border} />
                         <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No courses yet</Text>
-                        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                            Tap the + button to add a course folder.{'\n'}Videos in subfolders will be included.
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                            Tap + to add a course folder
                         </Text>
                     </View>
                 }
@@ -102,9 +115,9 @@ const HomeScreen = ({ navigation }) => {
                 disabled={loading}
             >
                 {loading ? (
-                    <ActivityIndicator color="#FFF" size="small" />
+                    <ActivityIndicator color="#FFF" />
                 ) : (
-                    <Feather name="plus" color="#FFF" size={32} />
+                    <Feather name="plus" color="#FFF" size={28} />
                 )}
             </TouchableOpacity>
         </SafeAreaView>
@@ -113,32 +126,24 @@ const HomeScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: SPACING.m,
-        paddingVertical: SPACING.l,
-    },
-    headerTitle: { fontSize: FONTS.sizes.h1, fontWeight: FONTS.weights.bold },
-    headerSubtitle: { fontSize: FONTS.sizes.bodySmall, marginTop: SPACING.xxs },
-    headerActions: { flexDirection: 'row', gap: SPACING.m },
-    iconButton: { padding: SPACING.xs },
-    listContent: { padding: SPACING.m, paddingBottom: 100 },
-    emptyState: { alignItems: 'center', marginTop: 80, paddingHorizontal: 40 },
-    emptyTitle: { fontSize: 20, fontWeight: '600', marginTop: 16 },
-    emptySubtitle: { fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 },
-    fab: {
-        position: 'absolute',
-        bottom: SPACING.xl,
-        right: SPACING.xl,
-        width: 64,
-        height: 64,
-        borderRadius: RADIUS.full,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 5,
-    },
+    header: { padding: 20 },
+    title: { fontSize: 28, fontWeight: '700' },
+    subtitle: { fontSize: 14, marginTop: 4 },
+    list: { padding: 16, paddingBottom: 100 },
+    empty: { alignItems: 'center', marginTop: 60 },
+    emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 16 },
+    emptyText: { fontSize: 14, marginTop: 8 },
+    fab: { position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 4 },
+    // Card styles
+    card: { borderRadius: 12, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
+    cardThumbnail: { height: 140, justifyContent: 'center', alignItems: 'center' },
+    cardContent: { padding: 16 },
+    cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+    cardSubtitle: { fontSize: 14, marginBottom: 12 },
+    progressContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    progressBg: { flex: 1, height: 6, borderRadius: 3 },
+    progressFill: { height: '100%', borderRadius: 3 },
+    progressText: { fontSize: 12, width: 30 },
 });
 
 export default HomeScreen;
