@@ -1,8 +1,8 @@
+// Test 17: CourseDetailScreen without VideoListItem
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import VideoListItem from '../components/VideoListItem';
 import { SPACING, FONTS, RADIUS } from '../constants/theme';
 
 const CourseDetailScreen = ({ navigation, route }) => {
@@ -57,11 +57,13 @@ const CourseDetailScreen = ({ navigation, route }) => {
                     data={course.videos}
                     keyExtractor={item => item.id}
                     renderItem={({ item }) => (
-                        <VideoListItem
-                            video={item}
+                        <TouchableOpacity
+                            style={styles.videoItem}
                             onPress={() => navigation.navigate('VideoPlayer', { videoUri: item.uri, title: item.title })}
-                            isActive={false}
-                        />
+                        >
+                            <Feather name="play" size={20} color={colors.textSecondary} />
+                            <Text style={[styles.videoTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+                        </TouchableOpacity>
                     )}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingTop: 50, // Safe area top
+        paddingTop: 50,
         paddingHorizontal: SPACING.m,
     },
     iconButton: {
@@ -147,6 +149,16 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: SPACING.m,
+    },
+    videoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: SPACING.m,
+        gap: SPACING.m,
+    },
+    videoTitle: {
+        flex: 1,
+        fontSize: FONTS.sizes.body,
     },
 });
 
