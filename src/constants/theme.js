@@ -1,9 +1,11 @@
+// Theme constants - all values are self-contained, no external dependencies
+
 export const COLORS = {
-  primary: '#2563EB', // Deep Blue
+  primary: '#2563EB',
   primaryDark: '#1E40AF',
-  secondary: '#10B981', // Vibrant Green
+  secondary: '#10B981',
   secondaryDark: '#059669',
-  
+
   background: {
     light: '#F9FAFB',
     dark: '#0F172A',
@@ -22,15 +24,17 @@ export const COLORS = {
     light: '#E5E7EB',
     dark: '#334155',
   },
-  
+
   success: '#10B981',
   warning: '#F59E0B',
   error: '#EF4444',
   info: '#3B82F6',
-  
+
   overlay: 'rgba(0,0,0,0.5)',
 };
 
+// Note: These constants are kept for reference but should not be imported
+// Use hardcoded values in components instead to avoid Android build issues
 export const SPACING = {
   xxs: 4,
   xs: 8,
@@ -54,10 +58,10 @@ export const FONTS = {
     caption: 12,
   },
   weights: {
-    regular: '400',
+    regular: 'normal',
     medium: '500',
     semibold: '600',
-    bold: '700',
+    bold: 'bold',
   },
 };
 
