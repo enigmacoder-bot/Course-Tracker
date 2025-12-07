@@ -1,3 +1,4 @@
+// Test 16: App with HomeScreen + CourseDetailScreen only
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -5,7 +6,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import HomeScreen from './src/screens/HomeScreen';
 import CourseDetailScreen from './src/screens/CourseDetailScreen';
-import VideoPlayerScreen from './src/screens/VideoPlayerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,7 +30,6 @@ function AppContent() {
       }}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
-        <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
