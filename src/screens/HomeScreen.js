@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { SPACING, FONTS, RADIUS } from '../constants/theme';
 import { requestFolderPermission, readVideoFiles, getFolderName } from '../utils/fileSystem';
 
-// Inline CourseCard to avoid import issues
+// Inline CourseCard
 const CourseCard = ({ course, onPress, colors }) => (
     <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -134,7 +133,6 @@ const styles = StyleSheet.create({
     emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 16 },
     emptyText: { fontSize: 14, marginTop: 8 },
     fab: { position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 4 },
-    // Card styles
     card: { borderRadius: 12, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
     cardThumbnail: { height: 140, justifyContent: 'center', alignItems: 'center' },
     cardContent: { padding: 16 },
