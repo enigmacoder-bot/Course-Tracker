@@ -34,14 +34,12 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "1.9.24",
             "compileSdkVersion": 34,
             "targetSdkVersion": 34,
             "minSdkVersion": 24
           }
         }
-      ],
-      "expo-screen-orientation"
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"

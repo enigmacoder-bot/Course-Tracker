@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, StatusBar, Dimensions, PanResponder, Modal, Pressable, ActivityIndicator } from 'react-native';
 import VLCPlayer from 'react-native-vlc-media-player';
 import { Feather } from '@expo/vector-icons';
-import * as ScreenOrientation from 'expo-screen-orientation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
@@ -16,7 +15,6 @@ const VideoPlayerScreen = ({ navigation, route }) => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [showControls, setShowControls] = useState(true);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1.0);
     const [showSpeedMenu, setShowSpeedMenu] = useState(false);
     const [isBuffering, setIsBuffering] = useState(true);
@@ -34,27 +32,6 @@ const VideoPlayerScreen = ({ navigation, route }) => {
         }
         return () => clearTimeout(controlsTimeout.current);
     }, [showControls, paused, showSpeedMenu]);
-
-    // Toggle fullscreen (landscape/portrait)
-    const toggleFullscreen = async () => {
-        try {
-            if (isFullscreen) {
-                await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-            } else {
-                await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-            }
-            setIsFullscreen(!isFullscreen);
-        } catch (e) {
-            console.log('Orientation error:', e);
-        }
-    };
-
-    // Reset orientation on unmount
-    useEffect(() => {
-        return () => {
-            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
-        };
-    }, []);
 
     // Format time (seconds to HH:MM:SS or MM:SS)
     const formatTime = (seconds) => {
@@ -139,7 +116,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
     ).current;
 
     return (
-        <View style={[styles.container, isFullscreen && styles.fullscreen]}>
+        <View style={styles.container}>
             <StatusBar hidden />
 
             {/* VLC Player Component */}
@@ -183,14 +160,9 @@ const VideoPlayerScreen = ({ navigation, route }) => {
                             <Feather name="arrow-left" color="#FFF" size={24} />
                         </TouchableOpacity>
                         <Text style={styles.videoTitle} numberOfLines={1}>{title}</Text>
-                        <View style={styles.topActions}>
-                            <TouchableOpacity onPress={() => setMuted(!muted)} style={styles.iconBtn}>
-                                <Feather name={muted ? "volume-x" : "volume-2"} color="#FFF" size={20} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={toggleFullscreen} style={styles.iconBtn}>
-                                <Feather name={isFullscreen ? "minimize" : "maximize"} color="#FFF" size={22} />
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity onPress={() => setMuted(!muted)} style={styles.iconBtn}>
+                            <Feather name={muted ? "volume-x" : "volume-2"} color="#FFF" size={20} />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Center Controls - Play/Pause and Skip */}
@@ -257,19 +229,17 @@ const VideoPlayerScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
-    fullscreen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
     video: { flex: 1 },
     touchOverlay: { ...StyleSheet.absoluteFillObject },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'space-between', padding: 16 },
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10 },
-    topActions: { flexDirection: 'row', alignItems: 'center' },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 40 },
     iconBtn: { padding: 8 },
     videoTitle: { flex: 1, color: '#FFF', fontSize: 16, fontWeight: '600', textAlign: 'center', marginHorizontal: 8 },
     centerControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 50 },
     playBtn: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
     skipBtn: { alignItems: 'center' },
     skipText: { color: '#FFF', fontSize: 12, marginTop: 2 },
-    bottomBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 10 },
+    bottomBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 20 },
     time: { color: '#FFF', fontSize: 12, minWidth: 50, textAlign: 'center' },
     progressContainer: { flex: 1, height: 40, justifyContent: 'center' },
     progressBg: { height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, position: 'relative' },
