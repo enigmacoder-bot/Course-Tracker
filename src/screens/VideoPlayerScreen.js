@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, StatusBar, Dimensions, PanResponder, Modal, Pressable, ActivityIndicator } from 'react-native';
-import { VLCPlayer } from 'react-native-vlc-media-player';
+import VLCPlayer from 'react-native-vlc-media-player';
 import { Feather } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
