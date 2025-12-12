@@ -45,10 +45,10 @@ jobs:
         run: |
           echo 'android { buildTypes { release { signingConfig signingConfigs.debug } } }' >> android/app/build.gradle
       
-      - name: Apply Gradle fix for Expo Modules
+      - name: Patch expo-modules-core
         run: |
-          # Inject maven-publish plugin application into allprojects block
-          sed -i '/allprojects {/a \    plugins.withId("com.android.library") { apply plugin: "maven-publish" }' android/build.gradle
+          # Patch expo-modules-core to avoid 'unknown property release' error by removing the problematic line
+          sed -i 's/from components.release/\/\/ from components.release/' node_modules/expo-modules-core/android/build.gradle
       
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
