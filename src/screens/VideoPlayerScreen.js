@@ -39,6 +39,13 @@ const VideoPlayerScreen = ({ navigation, route }) => {
 
                 // If we have a videoId, use MediaLibrary to get the real file path
                 if (videoId) {
+                    // Request permission first
+                    const { status } = await MediaLibrary.requestPermissionsAsync();
+                    if (status !== 'granted') {
+                        setLoadError('Media library permission is required to play videos.');
+                        return;
+                    }
+
                     const assetInfo = await MediaLibrary.getAssetInfoAsync(videoId);
                     if (assetInfo && assetInfo.localUri) {
                         // Remove file:// prefix if present - VLC adds it internally
