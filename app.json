@@ -46,8 +46,7 @@
           "photosPermission": "Allow CourseTracker to access your videos to track course progress.",
           "isAccessMediaLocationEnabled": true
         }
-      ],
-      "./plugins/vlc-player-plugin.js"
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"
