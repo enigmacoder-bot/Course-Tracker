@@ -47,17 +47,7 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      [
-        "react-native-vlc-media-player",
-        {
-          "ios": {
-            "includeVLCKit": false
-          },
-          "android": {
-            "legacyJetifier": false
-          }
-        }
-      ]
+      "./plugins/vlc-player-plugin.js"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
