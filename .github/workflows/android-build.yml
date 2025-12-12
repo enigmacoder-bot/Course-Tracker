@@ -38,12 +38,17 @@ jobs:
       - name: Fix Gradle wrapper for SDK 52
         run: |
           cd android
-          # Use Gradle 8.6 which is compatible with Expo SDK 52
-          sed -i 's/gradle-.*-all.zip/gradle-8.6-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          # Use Gradle 8.7 which is required by React Native 0.76+
+          sed -i 's/gradle-.*-all.zip/gradle-8.7-all.zip/' gradle/wrapper/gradle-wrapper.properties
       
       - name: Configure release build signing
         run: |
           echo 'android { buildTypes { release { signingConfig signingConfigs.debug } } }' >> android/app/build.gradle
+      
+      - name: Apply Gradle fix for Expo Modules
+        run: |
+          # Inject maven-publish plugin application into allprojects block
+          sed -i '/allprojects {/a \    plugins.withId("com.android.library") { apply plugin: "maven-publish" }' android/build.gradle
       
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
