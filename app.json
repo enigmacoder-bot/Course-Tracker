@@ -46,6 +46,17 @@
           "photosPermission": "Allow CourseTracker to access your videos to track course progress.",
           "isAccessMediaLocationEnabled": true
         }
+      ],
+      [
+        "react-native-vlc-media-player",
+        {
+          "ios": {
+            "includeVLCKit": false
+          },
+          "android": {
+            "legacyJetifier": false
+          }
+        }
       ]
     ],
     "web": {
