@@ -29,8 +29,16 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Fix Expo package versions
+        run: npx expo install --fix
+      
       - name: Setup Expo CLI
         run: npm install -g @expo/cli
+      
+      - name: Patch expo-modules-core before prebuild
+        run: |
+          # Patch expo-modules-core to avoid 'unknown property release' error in Gradle 8
+          sed -i 's/from components.release/\/\/ from components.release/' node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
       
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
@@ -44,11 +52,6 @@ jobs:
       - name: Configure release build signing
         run: |
           echo 'android { buildTypes { release { signingConfig signingConfigs.debug } } }' >> android/app/build.gradle
-      
-      - name: Patch expo-modules-core
-        run: |
-          # Patch expo-modules-core to avoid 'unknown property release' error
-          sed -i 's/from components.release/\/\/ from components.release/' node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
       
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
