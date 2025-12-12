@@ -44,6 +44,10 @@ jobs:
       - name: Configure release build signing
         run: |
           echo 'android { buildTypes { release { signingConfig signingConfigs.debug } } }' >> android/app/build.gradle
+
+      - name: Apply Gradle fix for Expo Modules
+        run: |
+          echo 'subprojects { plugins.withId("com.android.library") { apply plugin: "maven-publish" } }' >> android/build.gradle
       
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
