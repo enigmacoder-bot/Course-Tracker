@@ -1,14 +1,19 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, StatusBar, Dimensions, PanResponder, Modal, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, StatusBar, Dimensions, PanResponder, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { VLCPlayer } from 'react-native-vlc-media-player';
 import { Feather } from '@expo/vector-icons';
+import * as MediaLibrary from 'expo-media-library';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
 
 const VideoPlayerScreen = ({ navigation, route }) => {
-    const { videoUri, title } = route.params;
+    const { videoUri, title, videoId } = route.params;
     const playerRef = useRef(null);
+
+    // Resolved file path for VLC
+    const [resolvedUri, setResolvedUri] = useState(null);
+    const [loadError, setLoadError] = useState(null);
 
     // Playback state
     const [paused, setPaused] = useState(false);
@@ -24,6 +29,54 @@ const VideoPlayerScreen = ({ navigation, route }) => {
     const [muted, setMuted] = useState(false);
 
     const controlsTimeout = useRef(null);
+
+    // Resolve content:// URI to file path for VLCPlayer
+    useEffect(() => {
+        const resolveVideoUri = async () => {
+            try {
+                console.log('Original videoUri:', videoUri);
+                console.log('Video ID:', videoId);
+
+                // If we have a videoId, use MediaLibrary to get the real file path
+                if (videoId) {
+                    const assetInfo = await MediaLibrary.getAssetInfoAsync(videoId);
+                    if (assetInfo && assetInfo.localUri) {
+                        // Remove file:// prefix if present - VLC adds it internally
+                        let filePath = assetInfo.localUri;
+                        if (filePath.startsWith('file://')) {
+                            filePath = filePath.substring(7);
+                        }
+                        console.log('Resolved localUri:', filePath);
+                        setResolvedUri(filePath);
+                        return;
+                    }
+                }
+
+                // Fallback: Try to extract file path from content:// URI
+                if (videoUri.startsWith('content://')) {
+                    // For content URIs, we need the asset ID to resolve properly
+                    console.warn('Content URI without video ID - playback may fail');
+                    setLoadError('Cannot resolve video path. Please try again.');
+                    return;
+                }
+
+                // If it's already a file path, use it directly
+                if (videoUri.startsWith('file://')) {
+                    setResolvedUri(videoUri.substring(7));
+                } else if (videoUri.startsWith('/')) {
+                    setResolvedUri(videoUri);
+                } else {
+                    // Network URL or other format
+                    setResolvedUri(videoUri);
+                }
+            } catch (error) {
+                console.error('Error resolving video URI:', error);
+                setLoadError('Failed to load video: ' + error.message);
+            }
+        };
+
+        resolveVideoUri();
+    }, [videoUri, videoId]);
 
     // Auto-hide controls after 4 seconds
     useEffect(() => {
@@ -119,26 +172,54 @@ const VideoPlayerScreen = ({ navigation, route }) => {
         <View style={styles.container}>
             <StatusBar hidden />
 
-            {/* VLC Player Component */}
-            <VLCPlayer
-                ref={playerRef}
-                style={styles.video}
-                source={{ uri: videoUri }}
-                paused={paused}
-                rate={playbackRate}
-                volume={muted ? 0 : volume}
-                muted={muted}
-                repeat={false}
-                resizeMode="contain"
-                onProgress={handleProgress}
-                onLoad={handleLoad}
-                onEnd={handleEnd}
-                onBuffering={handleBuffering}
-                onError={(e) => console.error('VLC Error:', e)}
-                onStopped={() => console.log('VLC Stopped')}
-                onPlaying={() => setIsBuffering(false)}
-                onPaused={() => console.log('VLC Paused')}
-            />
+            {/* Error State */}
+            {loadError && (
+                <View style={styles.errorOverlay}>
+                    <Feather name="alert-circle" size={48} color="#EF4444" />
+                    <Text style={styles.errorText}>{loadError}</Text>
+                    <TouchableOpacity
+                        style={styles.errorBtn}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={styles.errorBtnText}>Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Loading State - waiting for URI resolution */}
+            {!resolvedUri && !loadError && (
+                <View style={styles.bufferingOverlay}>
+                    <ActivityIndicator size="large" color="#FFF" />
+                    <Text style={styles.bufferingText}>Preparing video...</Text>
+                </View>
+            )}
+
+            {/* VLC Player Component - only render when we have a valid path */}
+            {resolvedUri && !loadError && (
+                <VLCPlayer
+                    ref={playerRef}
+                    style={styles.video}
+                    source={{ uri: resolvedUri }}
+                    autoplay={true}
+                    paused={paused}
+                    rate={playbackRate}
+                    volume={muted ? 0 : volume}
+                    muted={muted}
+                    repeat={false}
+                    resizeMode="contain"
+                    onProgress={handleProgress}
+                    onLoad={handleLoad}
+                    onEnd={handleEnd}
+                    onBuffering={handleBuffering}
+                    onError={(e) => {
+                        console.error('VLC Error:', e);
+                        setLoadError('Video playback error. The file may be corrupted or unsupported.');
+                    }}
+                    onStopped={() => console.log('VLC Stopped')}
+                    onPlaying={() => setIsBuffering(false)}
+                    onPaused={() => console.log('VLC Paused')}
+                />
+            )}
 
             {/* Buffering Indicator */}
             {isBuffering && (
@@ -256,6 +337,31 @@ const styles = StyleSheet.create({
     speedOptionActive: { backgroundColor: '#2563EB' },
     speedOptionText: { color: '#94A3B8', fontSize: 16, textAlign: 'center' },
     speedOptionTextActive: { color: '#FFF', fontWeight: '600' },
+    errorOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000',
+        padding: 20
+    },
+    errorText: {
+        color: '#FFF',
+        fontSize: 16,
+        textAlign: 'center',
+        marginTop: 16,
+        marginBottom: 24
+    },
+    errorBtn: {
+        backgroundColor: '#2563EB',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8
+    },
+    errorBtnText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '600'
+    },
 });
 
 export default VideoPlayerScreen;

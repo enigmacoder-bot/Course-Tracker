@@ -111,7 +111,7 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 {/* Play button */}
                 <TouchableOpacity
                     style={[styles.videoNum, { backgroundColor: isCompleted ? colors.success + '20' : colors.primary + '20' }]}
-                    onPress={() => navigation.navigate('VideoPlayer', { videoUri: video.uri, title: video.title })}
+                    onPress={() => navigation.navigate('VideoPlayer', { videoUri: video.uri, title: video.title, videoId: video.id })}
                 >
                     <Feather name="play" size={16} color={isCompleted ? colors.success : colors.primary} />
                 </TouchableOpacity>
@@ -119,7 +119,7 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 {/* Video info */}
                 <TouchableOpacity
                     style={styles.videoInfo}
-                    onPress={() => navigation.navigate('VideoPlayer', { videoUri: video.uri, title: video.title })}
+                    onPress={() => navigation.navigate('VideoPlayer', { videoUri: video.uri, title: video.title, videoId: video.id })}
                 >
                     <Text
                         style={[
