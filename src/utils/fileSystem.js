@@ -52,12 +52,11 @@ export const readDirectoryContents = async (directoryUri) => {
                     };
                 }
 
-                // Check if it looks like a file with an extension
-                const hasExtension = /\.[a-zA-Z0-9]{1,5}$/.test(name);
-                if (hasExtension) {
-                    // Non-video file, skip it
-                    return null;
-                }
+                // If it's not a video, treat it as a potential folder first
+                // Only skip if we are absolutely sure it's a non-video file we don't care about
+                // But folders often have dots (e.g. "1. Introduction"), so we shouldn't skip based on extension alone.
+                // We'll rely on readDirectoryAsync failing if it's not a directory.
+
 
                 // Try to read as directory to confirm it's a folder
                 try {
@@ -118,13 +117,9 @@ export const countVideosRecursively = async (directoryUri, maxDepth = 10, curren
             entries.map(async (uri) => {
                 const name = decodeURIComponent(uri).split('/').pop() || '';
 
+                // Check if it's a video file
                 if (isVideoFile(name)) {
                     return 1;
-                }
-
-                // Skip files with extensions
-                if (/\.[a-zA-Z0-9]{1,5}$/.test(name)) {
-                    return 0;
                 }
 
                 // Try to recurse into folder
@@ -164,15 +159,9 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
                 const decodedUri = decodeURIComponent(uri);
                 const filename = decodedUri.split('/').pop();
 
-                // Quick check: if it's a video file, return immediately
-                if (VIDEO_EXTENSIONS.test(filename)) {
-                    return [{ uri, filename }];
-                }
-
-                // Check if it looks like a file with non-video extension
-                const hasExtension = /\.[a-zA-Z0-9]{1,5}$/.test(filename);
-                if (hasExtension) {
-                    return [];
+                // Check if it's a video file
+                if (isVideoFile(name)) {
+                    return [{ uri, filename: name }];
                 }
 
                 // Try to process as directory
@@ -235,12 +224,6 @@ export const readCourseStructure = async (directoryUri) => {
                     return;
                 }
 
-                // Check if it looks like a file with extension (skip non-video files)
-                const hasExtension = /\.[a-zA-Z0-9]{1,5}$/.test(name);
-                if (hasExtension) {
-                    return;
-                }
-
                 // Try to read as directory (this is a section/folder)
                 try {
                     const sectionVideos = await readVideoFiles(uri);
@@ -252,8 +235,8 @@ export const readCourseStructure = async (directoryUri) => {
                             videos: sectionVideos.map(v => ({
                                 id: v.uri,
                                 uri: v.uri,
-                                filename: v.filename,
-                                title: v.filename.replace(/\.[^/.]+$/, ''),
+                                filename: v.filename || v.name, // Handle both properties if different
+                                title: (v.filename || v.name).replace(/\.[^/.]+$/, ''),
                                 completed: false,
                                 progress: 0,
                             })),

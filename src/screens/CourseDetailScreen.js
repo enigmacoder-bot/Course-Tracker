@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Alert, SectionList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Alert, SectionList, Modal, TextInput } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useCourse } from '../context/CourseContext';
 
 const CourseDetailScreen = ({ navigation, route }) => {
     const { colors } = useTheme();
-    const { course: initialCourse } = route.params;
-    const [course, setCourse] = useState(initialCourse);
+    const { courseId } = route.params;
+    const { courses, updateVideoProgress, updateCourse } = useCourse();
+
+    // Get latest course state from context
+    const course = courses.find(c => c.id === courseId);
+
     const [expandedSections, setExpandedSections] = useState({});
+    const [renameModalVisible, setRenameModalVisible] = useState(false);
+    const [newName, setNewName] = useState('');
+
+    useEffect(() => {
+        if (!course) {
+            navigation.goBack();
+        }
+    }, [course]);
+
+    if (!course) return null;
 
     // Calculate progress based on completed videos
     const allVideos = course.videos || [];
@@ -27,34 +41,11 @@ const CourseDetailScreen = ({ navigation, route }) => {
     };
 
     // Toggle video completed status
-    const toggleVideoComplete = (videoId) => {
-        setCourse(prev => {
-            // Update in flat videos array
-            const updatedVideos = prev.videos.map(v =>
-                v.id === videoId ? { ...v, completed: !v.completed } : v
-            );
-
-            // Update in sections if they exist
-            const updatedSections = prev.sections?.map(section => ({
-                ...section,
-                videos: section.videos.map(v =>
-                    v.id === videoId ? { ...v, completed: !v.completed } : v
-                ),
-            }));
-
-            // Update in rootVideos
-            const updatedRootVideos = prev.rootVideos?.map(v =>
-                v.id === videoId ? { ...v, completed: !v.completed } : v
-            );
-
-            return {
-                ...prev,
-                videos: updatedVideos,
-                sections: updatedSections,
-                rootVideos: updatedRootVideos,
-            };
-        });
+    const toggleVideoComplete = (videoId, currentStatus) => {
+        updateVideoProgress(course.id, videoId, !currentStatus);
     };
+
+
 
     // Mark all as completed
     const markAllComplete = () => {
@@ -65,15 +56,29 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Yes',
-                    onPress: () => setCourse(prev => ({
-                        ...prev,
-                        videos: prev.videos.map(v => ({ ...v, completed: true })),
-                        sections: prev.sections?.map(s => ({
-                            ...s,
-                            videos: s.videos.map(v => ({ ...v, completed: true })),
-                        })),
-                        rootVideos: prev.rootVideos?.map(v => ({ ...v, completed: true })),
-                    }))
+                    onPress: () => {
+                        // We need a bulk update method in context ideally, but for now we iterate or logic needs update
+                        // For simplicity/performance locally, we can iterate, but better to add bulk update to context if needed.
+                        // Actually, I'll allow the user to toggle one by one or implement bulk in context later.
+                        // For now, let's just do a simple implementation or skip complex bulk update to keep context simple:
+                        // "feature not fully implemented" or better, add batch update to context.
+                        // Let's modify context to support simpler updates?
+                        // Or just iterate:
+                        const allVids = [...(course.rootVideos || []), ...(course.sections?.flatMap(s => s.videos) || [])];
+                        // This might be slow. Let's just update the course object directly via updateCourse for bulk.
+
+                        const updatedCourse = {
+                            ...course,
+                            videos: course.videos.map(v => ({ ...v, completed: true })),
+                            sections: course.sections?.map(s => ({
+                                ...s,
+                                videos: s.videos.map(v => ({ ...v, completed: true })),
+                            })),
+                            rootVideos: course.rootVideos?.map(v => ({ ...v, completed: true })),
+                            progress: 100
+                        };
+                        updateCourse(course.id, updatedCourse);
+                    }
                 },
             ]
         );
@@ -88,18 +93,29 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Yes',
-                    onPress: () => setCourse(prev => ({
-                        ...prev,
-                        videos: prev.videos.map(v => ({ ...v, completed: false })),
-                        sections: prev.sections?.map(s => ({
-                            ...s,
-                            videos: s.videos.map(v => ({ ...v, completed: false })),
-                        })),
-                        rootVideos: prev.rootVideos?.map(v => ({ ...v, completed: false })),
-                    }))
+                    onPress: () => {
+                        const updatedCourse = {
+                            ...course,
+                            videos: course.videos.map(v => ({ ...v, completed: false })),
+                            sections: course.sections?.map(s => ({
+                                ...s,
+                                videos: s.videos.map(v => ({ ...v, completed: false })),
+                            })),
+                            rootVideos: course.rootVideos?.map(v => ({ ...v, completed: false })),
+                            progress: 0
+                        };
+                        updateCourse(course.id, updatedCourse);
+                    }
                 },
             ]
         );
+    };
+
+    const handleRename = () => {
+        if (newName.trim()) {
+            updateCourse(course.id, { title: newName.trim() });
+            setRenameModalVisible(false);
+        }
     };
 
     // Render a video item
@@ -139,7 +155,7 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 {/* Mark complete button */}
                 <TouchableOpacity
                     style={styles.completeBtn}
-                    onPress={() => toggleVideoComplete(video.id)}
+                    onPress={() => toggleVideoComplete(video.id, isCompleted)}
                 >
                     <Feather
                         name={isCompleted ? "check-circle" : "circle"}
@@ -231,9 +247,17 @@ const CourseDetailScreen = ({ navigation, route }) => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Feather name="arrow-left" color="#FFF" size={24} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={markAllComplete} style={styles.backBtn}>
-                        <Feather name="check-square" color="#FFF" size={22} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity onPress={() => {
+                            setNewName(course.title);
+                            setRenameModalVisible(true);
+                        }} style={styles.backBtn}>
+                            <Feather name="edit-2" color="#FFF" size={22} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={markAllComplete} style={styles.backBtn}>
+                            <Feather name="check-square" color="#FFF" size={22} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View style={styles.heroContent}>
                     <Text style={styles.courseTitle} numberOfLines={2}>{course.title}</Text>
@@ -277,7 +301,44 @@ const CourseDetailScreen = ({ navigation, route }) => {
                     contentContainerStyle={styles.listContent}
                 />
             </View>
-        </View>
+
+
+            {/* Rename Modal */}
+            <Modal
+                transparent={true}
+                visible={renameModalVisible}
+                animationType="fade"
+                onRequestClose={() => setRenameModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Rename Course</Text>
+                        <TextInput
+                            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
+                            value={newName}
+                            onChangeText={setNewName}
+                            autoFocus
+                            placeholder="Enter new course name"
+                            placeholderTextColor={colors.textSecondary}
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
+                                onPress={() => setRenameModalVisible(false)}
+                            >
+                                <Text style={{ color: colors.textPrimary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                                onPress={handleRename}
+                            >
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </View >
     );
 };
 
@@ -341,6 +402,12 @@ const styles = StyleSheet.create({
     videoInfo: { flex: 1, marginRight: 12 },
     videoTitle: { fontSize: 14 },
     completeBtn: { padding: 4 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { width: '85%', padding: 24, borderRadius: 16, elevation: 5 },
+    modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16 },
+    input: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 24, fontSize: 16 },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+    modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
 });
 
 export default CourseDetailScreen;

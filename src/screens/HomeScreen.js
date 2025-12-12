@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, FlatList, StyleSheet, SafeAreaView, StatusBar, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useCourse } from '../context/CourseContext';
 
 // Inline CourseCard
-const CourseCard = ({ course, onPress, colors }) => (
+const CourseCard = ({ course, onPress, onLongPress, colors }) => (
     <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={onPress}
+        onLongPress={onLongPress}
         activeOpacity={0.9}
     >
         <View style={[styles.cardThumbnail, { backgroundColor: colors.border }]}>
@@ -30,26 +31,56 @@ const CourseCard = ({ course, onPress, colors }) => (
     </TouchableOpacity>
 );
 
-const HomeScreen = ({ navigation, route }) => {
+const HomeScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
-    const [courses, setCourses] = useState([]);
+    const { courses, deleteCourse, updateCourse } = useCourse();
 
-    // Handle incoming course from FolderPickerScreen
-    useEffect(() => {
-        if (route.params?.newCourse) {
-            setCourses(prev => {
-                // Avoid duplicates
-                const exists = prev.some(c => c.id === route.params.newCourse.id);
-                if (exists) return prev;
-                return [...prev, route.params.newCourse];
-            });
-            // Clear the param to avoid re-adding on subsequent navigations
-            navigation.setParams({ newCourse: undefined });
+    const [renameModalVisible, setRenameModalVisible] = useState(false);
+    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [newName, setNewName] = useState('');
+
+    const handleLongPress = (course) => {
+        Alert.alert(
+            'Course Options',
+            `Options for "${course.title}"`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Rename',
+                    onPress: () => {
+                        setSelectedCourse(course);
+                        setNewName(course.title);
+                        setRenameModalVisible(true);
+                    }
+                },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        Alert.alert(
+                            'Delete Course',
+                            `Are you sure you want to remove "${course.title}" from your list?`,
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Delete', style: 'destructive', onPress: () => deleteCourse(course.id) }
+                            ]
+                        );
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleRename = () => {
+        if (selectedCourse && newName.trim()) {
+            updateCourse(selectedCourse.id, { title: newName.trim() });
+            setRenameModalVisible(false);
+            setSelectedCourse(null);
         }
-    }, [route.params?.newCourse]);
+    };
 
     const handleAddCourse = () => {
-        // Navigate to folder picker (instant MediaStore scanning)
+        // Navigate to folder picker
         navigation.navigate('FolderPicker');
     };
 
@@ -71,7 +102,8 @@ const HomeScreen = ({ navigation, route }) => {
                     <CourseCard
                         course={item}
                         colors={colors}
-                        onPress={() => navigation.navigate('CourseDetail', { course: item })}
+                        onPress={() => navigation.navigate('CourseDetail', { courseId: item.id })}
+                        onLongPress={() => handleLongPress(item)}
                     />
                 )}
                 contentContainerStyle={styles.list}
@@ -92,6 +124,41 @@ const HomeScreen = ({ navigation, route }) => {
             >
                 <Feather name="plus" color="#FFF" size={28} />
             </TouchableOpacity>
+            {/* Rename Modal */}
+            <Modal
+                transparent={true}
+                visible={renameModalVisible}
+                animationType="fade"
+                onRequestClose={() => setRenameModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Rename Course</Text>
+                        <TextInput
+                            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
+                            value={newName}
+                            onChangeText={setNewName}
+                            autoFocus
+                            placeholder="Enter new course name"
+                            placeholderTextColor={colors.textSecondary}
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
+                                onPress={() => setRenameModalVisible(false)}
+                            >
+                                <Text style={{ color: colors.textPrimary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                                onPress={handleRename}
+                            >
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -115,6 +182,12 @@ const styles = StyleSheet.create({
     progressBg: { flex: 1, height: 6, borderRadius: 3 },
     progressFill: { height: '100%', borderRadius: 3 },
     progressText: { fontSize: 12, width: 30 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { width: '85%', padding: 24, borderRadius: 16, elevation: 5 },
+    modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16 },
+    input: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 24, fontSize: 16 },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+    modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
 });
 
 export default HomeScreen;

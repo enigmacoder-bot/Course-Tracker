@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { CourseProvider } from './src/context/CourseContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import HomeScreen from './src/screens/HomeScreen';
 import CourseDetailScreen from './src/screens/CourseDetailScreen';
@@ -48,7 +49,9 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AppContent />
+          <CourseProvider>
+            <AppContent />
+          </CourseProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

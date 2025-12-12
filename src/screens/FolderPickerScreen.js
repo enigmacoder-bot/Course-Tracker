@@ -18,9 +18,11 @@ import {
     readVideoFiles,
     getFolderName,
 } from '../utils/fileSystem';
+import { useCourse } from '../context/CourseContext';
 
 const FolderPickerScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
+    const { addCourse } = useCourse();
     const [contents, setContents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentUri, setCurrentUri] = useState(null);
@@ -144,7 +146,8 @@ const FolderPickerScreen = ({ navigation }) => {
                 ],
             };
 
-            navigation.navigate('Home', { newCourse });
+            addCourse(newCourse);
+            navigation.navigate('Home');
         } catch (err) {
             console.error('Error selecting folder:', err);
             Alert.alert('Error', 'Failed to read video files from this folder.');
