@@ -9,8 +9,8 @@ import {
     StatusBar,
     Alert,
     ScrollView,
+    Share,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -38,11 +38,17 @@ const FolderPickerScreen = ({ navigation }) => {
         setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
     };
 
-    // Copy logs to clipboard
-    const copyLogs = async () => {
+    // Share/copy logs using native share
+    const shareLogs = async () => {
         const logText = debugLogs.join('\n');
-        await Clipboard.setStringAsync(logText);
-        Alert.alert('Copied', 'Debug logs copied to clipboard');
+        try {
+            await Share.share({
+                message: logText,
+                title: 'Debug Logs',
+            });
+        } catch (err) {
+            Alert.alert('Error', 'Could not share logs');
+        }
     };
 
     // Request storage access on first load
@@ -158,8 +164,8 @@ const FolderPickerScreen = ({ navigation }) => {
                     <View style={styles.debugHeader}>
                         <Text style={styles.debugTitle}>Debug Logs</Text>
                         <View style={styles.debugButtons}>
-                            <TouchableOpacity onPress={copyLogs} style={styles.debugBtn}>
-                                <Text style={styles.copyButton}>Copy</Text>
+                            <TouchableOpacity onPress={shareLogs} style={styles.debugBtn}>
+                                <Text style={styles.copyButton}>Share</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => setDebugLogs([])} style={styles.debugBtn}>
                                 <Text style={styles.clearButton}>Clear</Text>
