@@ -89,22 +89,28 @@ const FolderPickerScreen = ({ navigation }) => {
             // Get course structure with logging callback
             const structure = await readCourseStructureWithLogs(folderUri, addLog);
 
-            addLog(`Result: ${structure.totalVideos} videos, ${structure.sections.length} sections`);
+            addLog(`Result: ${structure.totalVideos} root videos, ${structure.sections.length} sections`);
 
-            if (structure.totalVideos === 0) {
-                addLog('No videos found!');
-                setShowDebug(true); // Auto-show debug when there's an issue
+            // With lazy loading: need either root videos OR sections (which will be scanned later)
+            const hasContent = structure.totalVideos > 0 || structure.sections.length > 0;
+
+            if (!hasContent) {
+                addLog('No content found!');
+                setShowDebug(true);
                 Alert.alert(
-                    'No Videos Found',
-                    'No video files found. Check debug logs for details.',
+                    'No Content Found',
+                    'No video files or folders found in this directory.',
                     [{ text: 'OK' }]
                 );
-                setError('No videos found. Tap "Show Debug" to see details.');
+                setError('No content found. Tap "Show Debug" to see details.');
                 setLoading(false);
                 return;
             }
 
-            setStatusMessage(`Found ${structure.totalVideos} videos. Creating course...`);
+            const sectionInfo = structure.sections.length > 0
+                ? `${structure.sections.length} sections (tap to load videos)`
+                : '';
+            setStatusMessage(`Found ${structure.totalVideos} videos, ${sectionInfo}. Creating course...`);
             addLog('Creating course...');
 
             const folderName = getFolderName(folderUri);
@@ -113,7 +119,7 @@ const FolderPickerScreen = ({ navigation }) => {
                 id: folderUri,
                 title: folderName,
                 thumbnail: null,
-                videoCount: structure.totalVideos,
+                videoCount: structure.totalVideos, // Initially just root videos, will update as sections load
                 progress: 0,
                 sections: structure.sections,
                 rootVideos: structure.rootVideos,
