@@ -42,17 +42,58 @@ const FolderPickerScreen = ({ navigation }) => {
         try {
             const uri = await requestFolderPermission();
             if (uri) {
-                setRootUri(uri);
-                setCurrentUri(uri);
-                setPathStack([{ uri, name: 'Storage' }]);
-                await loadDirectory(uri);
+                // Directly create course from the selected folder
+                await createCourseFromFolder(uri);
             } else {
                 setError('Storage access denied. Please grant permission to browse folders.');
+                setLoading(false);
             }
         } catch (err) {
             console.error('Error requesting storage:', err);
             setError('Failed to access storage.');
-        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Create course directly from the SAF-selected folder
+    const createCourseFromFolder = async (folderUri) => {
+        try {
+            // Import the structured reader
+            const { readCourseStructure } = require('../utils/fileSystem');
+
+            // Get course structure preserving folders as sections
+            const structure = await readCourseStructure(folderUri);
+
+            if (structure.totalVideos === 0) {
+                Alert.alert('No Videos', 'No video files found in this folder or its subfolders.');
+                setLoading(false);
+                return;
+            }
+
+            const folderName = getFolderName(folderUri);
+
+            const newCourse = {
+                id: folderUri,
+                title: folderName,
+                thumbnail: null,
+                videoCount: structure.totalVideos,
+                progress: 0,
+                // Keep sections (Level 1, Level 2, etc.) for in-course navigation
+                sections: structure.sections,
+                // Root-level videos (not in any subfolder)
+                rootVideos: structure.rootVideos,
+                // Flattened videos for backwards compatibility
+                videos: [
+                    ...structure.rootVideos,
+                    ...structure.sections.flatMap(s => s.videos),
+                ],
+            };
+
+            addCourse(newCourse);
+            navigation.navigate('Home');
+        } catch (err) {
+            console.error('Error creating course:', err);
+            Alert.alert('Error', 'Failed to read video files from this folder.');
             setLoading(false);
         }
     };
