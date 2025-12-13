@@ -193,9 +193,67 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
 };
 
 /**
+ * Read videos from a section (folder) with limited depth
+ * This reads videos at this level and up to maxDepth deeper
+ * @param {string} directoryUri - SAF URI of the section folder
+ * @param {number} maxDepth - Maximum depth to recurse (default: 2)
+ * @param {number} currentDepth - Current recursion depth
+ * @returns {Promise<Array>} Array of video objects
+ */
+export const readSectionVideos = async (directoryUri, maxDepth = 2, currentDepth = 0) => {
+    if (currentDepth >= maxDepth) {
+        return [];
+    }
+
+    try {
+        const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
+        const videos = [];
+
+        await Promise.all(
+            entries.map(async (uri) => {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
+
+                // Check if it's a video file
+                if (isVideoFile(name)) {
+                    videos.push({
+                        id: uri,
+                        uri,
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    return;
+                }
+
+                // Try to recurse into subdirectory (but respect maxDepth)
+                try {
+                    const subVideos = await readSectionVideos(uri, maxDepth, currentDepth + 1);
+                    videos.push(...subVideos);
+                } catch (e) {
+                    // Not a directory, skip
+                }
+            })
+        );
+
+        // Sort videos alphabetically
+        videos.sort((a, b) =>
+            a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        return videos;
+    } catch (error) {
+        console.error('Error reading section videos:', error);
+        return [];
+    }
+};
+
+/**
  * Read a course folder preserving its structure (sections/folders)
  * Returns: { rootVideos: [...], sections: [{ name, uri, videos: [...] }, ...] }
- * This allows displaying Week 1, Week 2, etc. as navigable sections
+ * Direct subfolders (like Week 1, Week 2) become sections
+ * Videos in those sections are collected up to 2 levels deep
  */
 export const readCourseStructure = async (directoryUri) => {
     try {
@@ -211,7 +269,7 @@ export const readCourseStructure = async (directoryUri) => {
                 const decodedUri = decodeURIComponent(uri);
                 const name = decodedUri.split('/').pop() || 'Unknown';
 
-                // Check if it's a video file
+                // Check if it's a video file at root level
                 if (isVideoFile(name)) {
                     rootVideos.push({
                         id: uri,
@@ -224,22 +282,20 @@ export const readCourseStructure = async (directoryUri) => {
                     return;
                 }
 
-                // Try to read as directory (this is a section/folder)
+                // Try to read as directory - this becomes a section
                 try {
-                    const sectionVideos = await readVideoFiles(uri);
+                    // First verify it's a directory
+                    await StorageAccessFramework.readDirectoryAsync(uri);
+
+                    // Read videos from this section (with limited depth)
+                    const sectionVideos = await readSectionVideos(uri, 2, 0);
+
                     if (sectionVideos.length > 0) {
                         sections.push({
                             id: uri,
                             uri,
                             name,
-                            videos: sectionVideos.map(v => ({
-                                id: v.uri,
-                                uri: v.uri,
-                                filename: v.filename || v.name, // Handle both properties if different
-                                title: (v.filename || v.name).replace(/\.[^/.]+$/, ''),
-                                completed: false,
-                                progress: 0,
-                            })),
+                            videos: sectionVideos,
                         });
                     }
                 } catch (e) {
@@ -248,7 +304,7 @@ export const readCourseStructure = async (directoryUri) => {
             })
         );
 
-        // Sort sections alphabetically
+        // Sort sections alphabetically/numerically (Week 1, Week 2, etc.)
         sections.sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
         );
