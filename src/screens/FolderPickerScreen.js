@@ -8,23 +8,19 @@ import {
     ActivityIndicator,
     StatusBar,
     Alert,
+    ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import {
     requestFolderPermission,
     getFolderName,
-    readCourseStructure,
+    readCourseStructureWithLogs,
 } from '../utils/fileSystem';
 import { useCourse } from '../context/CourseContext';
 
 /**
- * FolderPickerScreen - Simple folder selector
- * 
- * Flow:
- * 1. Opens system SAF picker on mount
- * 2. Creates course from selected folder
- * 3. Navigates to Home
+ * FolderPickerScreen - Simple folder selector with debug logging
  */
 const FolderPickerScreen = ({ navigation }) => {
     const { colors, isDarkMode } = useTheme();
@@ -32,6 +28,14 @@ const FolderPickerScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [statusMessage, setStatusMessage] = useState('Opening folder picker...');
+    const [debugLogs, setDebugLogs] = useState([]);
+    const [showDebug, setShowDebug] = useState(false);
+
+    // Add log function
+    const addLog = (message) => {
+        const timestamp = new Date().toLocaleTimeString();
+        setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    };
 
     // Request storage access on first load
     useEffect(() => {
@@ -41,18 +45,22 @@ const FolderPickerScreen = ({ navigation }) => {
     const requestStorageAccess = async () => {
         setLoading(true);
         setError(null);
+        setDebugLogs([]);
         setStatusMessage('Opening folder picker...');
+        addLog('Requesting folder permission...');
 
         try {
             const uri = await requestFolderPermission();
             if (uri) {
+                addLog(`Folder selected: ${uri.substring(0, 60)}...`);
                 await createCourseFromFolder(uri);
             } else {
+                addLog('Permission denied or cancelled');
                 setError('Storage access denied. Please grant permission to select a folder.');
                 setLoading(false);
             }
         } catch (err) {
-            console.error('Error requesting storage:', err);
+            addLog(`Error: ${err.message}`);
             setError('Failed to access storage.');
             setLoading(false);
         }
@@ -62,22 +70,28 @@ const FolderPickerScreen = ({ navigation }) => {
     const createCourseFromFolder = async (folderUri) => {
         try {
             setStatusMessage('Reading folder structure...');
+            addLog('Starting to read folder structure...');
 
-            // Get course structure preserving folders as sections
-            const structure = await readCourseStructure(folderUri);
+            // Get course structure with logging callback
+            const structure = await readCourseStructureWithLogs(folderUri, addLog);
+
+            addLog(`Result: ${structure.totalVideos} videos, ${structure.sections.length} sections`);
 
             if (structure.totalVideos === 0) {
+                addLog('No videos found!');
+                setShowDebug(true); // Auto-show debug when there's an issue
                 Alert.alert(
                     'No Videos Found',
-                    'No video files found in this folder or its subfolders. Please select a folder containing video files.',
+                    'No video files found. Check debug logs for details.',
                     [{ text: 'OK' }]
                 );
-                setError('No videos found. Try selecting a different folder.');
+                setError('No videos found. Tap "Show Debug" to see details.');
                 setLoading(false);
                 return;
             }
 
             setStatusMessage(`Found ${structure.totalVideos} videos. Creating course...`);
+            addLog('Creating course...');
 
             const folderName = getFolderName(folderUri);
 
@@ -87,11 +101,8 @@ const FolderPickerScreen = ({ navigation }) => {
                 thumbnail: null,
                 videoCount: structure.totalVideos,
                 progress: 0,
-                // Keep sections (Level 1, Level 2, etc.) for in-course navigation
                 sections: structure.sections,
-                // Root-level videos (not in any subfolder)
                 rootVideos: structure.rootVideos,
-                // Flattened videos for backwards compatibility
                 videos: [
                     ...structure.rootVideos,
                     ...structure.sections.flatMap(s => s.videos),
@@ -99,11 +110,13 @@ const FolderPickerScreen = ({ navigation }) => {
             };
 
             addCourse(newCourse);
+            addLog('Course created successfully!');
             navigation.navigate('Home');
         } catch (err) {
-            console.error('Error creating course:', err);
-            Alert.alert('Error', 'Failed to read video files from this folder.');
-            setError('Failed to read folder. Try again.');
+            addLog(`Error creating course: ${err.message}`);
+            setShowDebug(true);
+            Alert.alert('Error', `Failed to read folder: ${err.message}`);
+            setError('Failed to read folder. Check debug logs.');
             setLoading(false);
         }
     };
@@ -123,11 +136,36 @@ const FolderPickerScreen = ({ navigation }) => {
                 <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
                     Add Course
                 </Text>
-                <View style={styles.headerButton} />
+                <TouchableOpacity
+                    onPress={() => setShowDebug(!showDebug)}
+                    style={styles.headerButton}
+                >
+                    <Feather name="terminal" size={20} color={showDebug ? colors.primary : colors.textSecondary} />
+                </TouchableOpacity>
             </View>
 
+            {/* Debug Log Panel */}
+            {showDebug && (
+                <View style={[styles.debugPanel, { backgroundColor: '#1a1a2e' }]}>
+                    <View style={styles.debugHeader}>
+                        <Text style={styles.debugTitle}>Debug Logs</Text>
+                        <TouchableOpacity onPress={() => setDebugLogs([])}>
+                            <Text style={styles.clearButton}>Clear</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.debugScroll}>
+                        {debugLogs.map((log, index) => (
+                            <Text key={index} style={styles.debugLog}>{log}</Text>
+                        ))}
+                        {debugLogs.length === 0 && (
+                            <Text style={styles.debugLog}>No logs yet...</Text>
+                        )}
+                    </ScrollView>
+                </View>
+            )}
+
             {/* Content */}
-            <View style={styles.centered}>
+            <View style={[styles.centered, showDebug && styles.centeredSmall]}>
                 {loading ? (
                     <>
                         <ActivityIndicator size="large" color={colors.primary} />
@@ -147,6 +185,15 @@ const FolderPickerScreen = ({ navigation }) => {
                         >
                             <Feather name="folder-plus" size={20} color="#FFF" />
                             <Text style={styles.retryButtonText}>Select Folder</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.debugButton, { borderColor: colors.border }]}
+                            onPress={() => setShowDebug(!showDebug)}
+                        >
+                            <Feather name="terminal" size={16} color={colors.textSecondary} />
+                            <Text style={[styles.debugButtonText, { color: colors.textSecondary }]}>
+                                {showDebug ? 'Hide' : 'Show'} Debug Logs
+                            </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.cancelButton}
@@ -183,11 +230,45 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
     },
+    debugPanel: {
+        maxHeight: 200,
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+    },
+    debugHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+    },
+    debugTitle: {
+        color: '#00ff88',
+        fontWeight: 'bold',
+        fontFamily: 'monospace',
+    },
+    clearButton: {
+        color: '#ff6b6b',
+        fontSize: 12,
+    },
+    debugScroll: {
+        padding: 8,
+    },
+    debugLog: {
+        color: '#a0ffa0',
+        fontSize: 11,
+        fontFamily: 'monospace',
+        marginBottom: 4,
+    },
     centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 24,
+    },
+    centeredSmall: {
+        flex: 0.6,
     },
     statusText: {
         marginTop: 16,
@@ -212,6 +293,18 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    debugButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        gap: 8,
+    },
+    debugButtonText: {
+        fontSize: 14,
     },
     cancelButton: {
         marginTop: 16,

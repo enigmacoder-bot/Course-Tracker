@@ -194,7 +194,8 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
 
 /**
  * Read videos from a section (folder) with limited depth
- * Uses getInfoAsync to properly detect directories (SAF-compliant approach)
+ * Uses try-catch on readDirectoryAsync to detect directories
+ * (getInfoAsync doesn't work reliably with SAF content:// URIs)
  * @param {string} directoryUri - SAF URI of the section folder
  * @param {number} maxDepth - Maximum depth to recurse (default: 5)
  * @param {number} currentDepth - Current recursion depth
@@ -202,48 +203,56 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
  */
 export const readSectionVideos = async (directoryUri, maxDepth = 5, currentDepth = 0) => {
     if (currentDepth >= maxDepth) {
+        console.log(`Max depth ${maxDepth} reached, stopping recursion`);
         return [];
     }
 
     try {
+        console.log(`[Depth ${currentDepth}] Reading directory: ${directoryUri.substring(0, 80)}...`);
         const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
+        console.log(`[Depth ${currentDepth}] Found ${entries.length} entries`);
+
         const videos = [];
 
-        // Process entries - use getInfoAsync to properly detect directories
-        await Promise.all(
-            entries.map(async (uri) => {
-                try {
-                    const decodedUri = decodeURIComponent(uri);
-                    const name = decodedUri.split('/').pop() || 'Unknown';
+        // Process entries sequentially to avoid race conditions and get better logging
+        for (const uri of entries) {
+            try {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
 
-                    // Check if it's a video file by extension first (faster than getInfoAsync)
-                    if (isVideoFile(name)) {
-                        videos.push({
-                            id: uri,
-                            uri,
-                            filename: name,
-                            title: name.replace(/\.[^/.]+$/, ''),
-                            completed: false,
-                            progress: 0,
-                        });
-                        return;
-                    }
-
-                    // Use getInfoAsync to check if it's a directory
-                    const info = await FileSystem.getInfoAsync(uri);
-
-                    if (info.exists && info.isDirectory) {
-                        // It's a directory - recurse into it
-                        const subVideos = await readSectionVideos(uri, maxDepth, currentDepth + 1);
-                        videos.push(...subVideos);
-                    }
-                    // If it's a file but not a video, skip it
-                } catch (e) {
-                    // Skip items that can't be processed
-                    console.log('Skipping item:', uri, e.message);
+                // Check if it's a video file by extension
+                if (isVideoFile(name)) {
+                    console.log(`[Depth ${currentDepth}] Found video: ${name}`);
+                    videos.push({
+                        id: uri,
+                        uri,
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    continue;
                 }
-            })
-        );
+
+                // Try to read as directory - if it succeeds, it's a directory
+                try {
+                    const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
+                    console.log(`[Depth ${currentDepth}] Found subfolder: ${name} with ${subEntries.length} entries`);
+
+                    // Recurse into this directory
+                    const subVideos = await readSectionVideos(uri, maxDepth, currentDepth + 1);
+                    console.log(`[Depth ${currentDepth}] Subfolder ${name} returned ${subVideos.length} videos`);
+                    videos.push(...subVideos);
+                } catch (dirError) {
+                    // Not a directory - it's a non-video file, skip it
+                    console.log(`[Depth ${currentDepth}] Skipping non-video file: ${name}`);
+                }
+            } catch (e) {
+                console.log(`[Depth ${currentDepth}] Error processing entry:`, e.message);
+            }
+        }
+
+        console.log(`[Depth ${currentDepth}] Returning ${videos.length} videos from this level`);
 
         // Sort videos alphabetically
         videos.sort((a, b) =>
@@ -252,7 +261,7 @@ export const readSectionVideos = async (directoryUri, maxDepth = 5, currentDepth
 
         return videos;
     } catch (error) {
-        console.error('Error reading section videos:', error);
+        console.error(`[Depth ${currentDepth}] Error reading directory:`, error);
         return [];
     }
 };
@@ -271,47 +280,51 @@ export const readCourseStructure = async (directoryUri) => {
         const rootVideos = [];
         const sections = [];
 
-        // Process all entries in parallel
-        await Promise.all(
-            entries.map(async (uri) => {
-                try {
-                    const decodedUri = decodeURIComponent(uri);
-                    const name = decodedUri.split('/').pop() || 'Unknown';
+        // Process entries sequentially for better logging
+        for (const uri of entries) {
+            try {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
 
-                    // Check if it's a video file at root level
-                    if (isVideoFile(name)) {
-                        rootVideos.push({
+                // Check if it's a video file at root level
+                if (isVideoFile(name)) {
+                    console.log(`Found root video: ${name}`);
+                    rootVideos.push({
+                        id: uri,
+                        uri,
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    continue;
+                }
+
+                // Try to read as directory - if it succeeds, it's a section
+                try {
+                    const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
+                    console.log(`Found section folder: ${name} with ${subEntries.length} entries`);
+
+                    // Read videos from this section (with depth limit of 5)
+                    const sectionVideos = await readSectionVideos(uri, 5, 0);
+                    console.log(`Section ${name} has ${sectionVideos.length} videos`);
+
+                    if (sectionVideos.length > 0) {
+                        sections.push({
                             id: uri,
                             uri,
-                            filename: name,
-                            title: name.replace(/\.[^/.]+$/, ''),
-                            completed: false,
-                            progress: 0,
+                            name,
+                            videos: sectionVideos,
                         });
-                        return;
                     }
-
-                    // Use getInfoAsync to check if it's a directory
-                    const info = await FileSystem.getInfoAsync(uri);
-
-                    if (info.exists && info.isDirectory) {
-                        // Read videos from this section (with depth limit of 5)
-                        const sectionVideos = await readSectionVideos(uri, 5, 0);
-
-                        if (sectionVideos.length > 0) {
-                            sections.push({
-                                id: uri,
-                                uri,
-                                name,
-                                videos: sectionVideos,
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.log('Skipping entry:', uri, e.message);
+                } catch (dirError) {
+                    // Not a directory - it's a non-video file, skip it
+                    console.log(`Skipping non-video file: ${name}`);
                 }
-            })
-        );
+            } catch (e) {
+                console.log('Error processing entry:', e.message);
+            }
+        }
 
         // Sort sections alphabetically/numerically (Week 1, Week 2, etc.)
         sections.sort((a, b) =>
@@ -333,6 +346,139 @@ export const readCourseStructure = async (directoryUri) => {
         };
     } catch (error) {
         console.error('Error reading course structure:', error);
+        return { rootVideos: [], sections: [], totalVideos: 0 };
+    }
+};
+
+/**
+ * Read videos from a section with UI logging
+ */
+const readSectionVideosWithLogs = async (directoryUri, log, maxDepth = 5, currentDepth = 0) => {
+    if (currentDepth >= maxDepth) {
+        log(`Depth ${maxDepth} reached, stopping`);
+        return [];
+    }
+
+    try {
+        const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
+        log(`[D${currentDepth}] Found ${entries.length} entries`);
+
+        const videos = [];
+
+        for (const uri of entries) {
+            try {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
+
+                if (isVideoFile(name)) {
+                    log(`[D${currentDepth}] ✓ Video: ${name}`);
+                    videos.push({
+                        id: uri,
+                        uri,
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    continue;
+                }
+
+                // Try to read as directory
+                try {
+                    const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
+                    log(`[D${currentDepth}] 📁 Folder: ${name} (${subEntries.length} items)`);
+
+                    const subVideos = await readSectionVideosWithLogs(uri, log, maxDepth, currentDepth + 1);
+                    videos.push(...subVideos);
+                } catch (dirError) {
+                    log(`[D${currentDepth}] ✗ Skip: ${name}`);
+                }
+            } catch (e) {
+                log(`[D${currentDepth}] Error: ${e.message}`);
+            }
+        }
+
+        return videos;
+    } catch (error) {
+        log(`Error: ${error.message}`);
+        return [];
+    }
+};
+
+/**
+ * Read course structure with UI logging callback
+ * @param {string} directoryUri - SAF URI
+ * @param {function} log - Callback to log messages to UI
+ */
+export const readCourseStructureWithLogs = async (directoryUri, log) => {
+    try {
+        log('Reading root directory...');
+        const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
+        log(`Root has ${entries.length} entries`);
+
+        const rootVideos = [];
+        const sections = [];
+
+        for (const uri of entries) {
+            try {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
+
+                if (isVideoFile(name)) {
+                    log(`✓ Root video: ${name}`);
+                    rootVideos.push({
+                        id: uri,
+                        uri,
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    continue;
+                }
+
+                // Try to read as directory
+                try {
+                    const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
+                    log(`📁 Section: ${name} (${subEntries.length} items)`);
+
+                    const sectionVideos = await readSectionVideosWithLogs(uri, log, 5, 0);
+                    log(`Section ${name}: ${sectionVideos.length} videos`);
+
+                    if (sectionVideos.length > 0) {
+                        sections.push({
+                            id: uri,
+                            uri,
+                            name,
+                            videos: sectionVideos,
+                        });
+                    }
+                } catch (dirError) {
+                    log(`✗ Not a folder: ${name}`);
+                }
+            } catch (e) {
+                log(`Error: ${e.message}`);
+            }
+        }
+
+        sections.sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        rootVideos.sort((a, b) =>
+            a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        const totalVideos = rootVideos.length + sections.reduce((sum, s) => sum + s.videos.length, 0);
+        log(`✓ Total: ${totalVideos} videos in ${sections.length} sections`);
+
+        return {
+            rootVideos,
+            sections,
+            totalVideos,
+        };
+    } catch (error) {
+        log(`FATAL: ${error.message}`);
         return { rootVideos: [], sections: [], totalVideos: 0 };
     }
 };
