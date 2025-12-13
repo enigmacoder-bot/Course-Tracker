@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Alert, SectionList, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Alert, SectionList, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCourse } from '../context/CourseContext';
+import { loadSectionVideosWithLogs } from '../utils/fileSystem';
 
 const CourseDetailScreen = ({ navigation, route }) => {
     const { colors } = useTheme();
     const { courseId } = route.params;
-    const { courses, updateVideoProgress, updateCourse } = useCourse();
+    const { courses, updateVideoProgress, updateCourse, updateSectionVideos } = useCourse();
 
     // Get latest course state from context
     const course = courses.find(c => c.id === courseId);
 
     const [expandedSections, setExpandedSections] = useState({});
+    const [loadingSections, setLoadingSections] = useState({}); // Track which sections are loading
     const [renameModalVisible, setRenameModalVisible] = useState(false);
     const [newName, setNewName] = useState('');
 
@@ -33,11 +35,38 @@ const CourseDetailScreen = ({ navigation, route }) => {
     const hasSections = course.sections && course.sections.length > 0;
     const hasRootVideos = course.rootVideos && course.rootVideos.length > 0;
 
-    // Toggle section expand/collapse
-    const toggleSection = (sectionId) => {
+    // Toggle section expand/collapse - loads videos on first expand
+    const toggleSection = async (section) => {
+        const sectionId = section.id;
+        const isCurrentlyExpanded = expandedSections[sectionId] !== false;
+
+        // If collapsing, just toggle
+        if (isCurrentlyExpanded) {
+            setExpandedSections(prev => ({
+                ...prev,
+                [sectionId]: false,
+            }));
+            return;
+        }
+
+        // If expanding and not loaded, load videos first
+        if (!section.loaded) {
+            setLoadingSections(prev => ({ ...prev, [sectionId]: true }));
+
+            try {
+                const videos = await loadSectionVideosWithLogs(section.uri, (msg) => console.log(msg));
+                updateSectionVideos(course.id, sectionId, videos);
+            } catch (error) {
+                Alert.alert('Error', 'Failed to load section videos');
+            } finally {
+                setLoadingSections(prev => ({ ...prev, [sectionId]: false }));
+            }
+        }
+
+        // Expand the section
         setExpandedSections(prev => ({
             ...prev,
-            [sectionId]: !prev[sectionId],
+            [sectionId]: true,
         }));
     };
 
@@ -170,33 +199,47 @@ const CourseDetailScreen = ({ navigation, route }) => {
 
     // Render a section header (folder like Week 1, Week 2)
     const renderSectionHeader = (section) => {
-        const isExpanded = expandedSections[section.id] !== false; // Default to expanded
-        const sectionCompleted = section.videos.filter(v => v.completed).length;
-        const sectionTotal = section.videos.length;
+        const isExpanded = expandedSections[section.id] === true;
+        const isLoading = loadingSections[section.id];
+        const isLoaded = section.loaded;
+
+        // Calculate stats based on loaded state
+        const sectionCompleted = section.videos?.filter(v => v.completed).length || 0;
+        const sectionTotal = section.videos?.length || 0;
         const sectionProgress = sectionTotal > 0 ? Math.round((sectionCompleted / sectionTotal) * 100) : 0;
 
         return (
             <TouchableOpacity
                 style={[styles.sectionHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => toggleSection(section.id)}
+                onPress={() => toggleSection(section)}
                 activeOpacity={0.7}
+                disabled={isLoading}
             >
                 <View style={[styles.sectionIcon, { backgroundColor: colors.primary + '20' }]}>
-                    <Feather name="folder" size={20} color={colors.primary} />
+                    {isLoading ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                        <Feather name="folder" size={20} color={colors.primary} />
+                    )}
                 </View>
                 <View style={styles.sectionInfo}>
                     <Text style={[styles.sectionName, { color: colors.textPrimary }]} numberOfLines={1}>
                         {section.name}
                     </Text>
                     <Text style={[styles.sectionMeta, { color: colors.textSecondary }]}>
-                        {sectionCompleted}/{sectionTotal} videos • {sectionProgress}%
+                        {isLoaded
+                            ? `${sectionCompleted}/${sectionTotal} videos • ${sectionProgress}%`
+                            : `${section.itemCount || '?'} items • Tap to load`
+                        }
                     </Text>
                 </View>
-                <Feather
-                    name={isExpanded ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color={colors.textSecondary}
-                />
+                {isLoading ? null : (
+                    <Feather
+                        name={isExpanded ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={colors.textSecondary}
+                    />
+                )}
             </TouchableOpacity>
         );
     };

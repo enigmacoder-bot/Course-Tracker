@@ -352,8 +352,16 @@ export const readCourseStructure = async (directoryUri) => {
 
 /**
  * Read videos from a section with UI logging
+ * Uses visited Set to prevent infinite loops
  */
-const readSectionVideosWithLogs = async (directoryUri, log, maxDepth = 5, currentDepth = 0) => {
+const readSectionVideosWithLogs = async (directoryUri, log, visited, maxDepth = 5, currentDepth = 0) => {
+    // Prevent infinite loops by checking if we've already visited this URI
+    if (visited.has(directoryUri)) {
+        log(`[D${currentDepth}] ⚠ Already visited, skipping`);
+        return [];
+    }
+    visited.add(directoryUri);
+
     if (currentDepth >= maxDepth) {
         log(`Depth ${maxDepth} reached, stopping`);
         return [];
@@ -366,6 +374,11 @@ const readSectionVideosWithLogs = async (directoryUri, log, maxDepth = 5, curren
         const videos = [];
 
         for (const uri of entries) {
+            // Skip if already visited
+            if (visited.has(uri)) {
+                continue;
+            }
+
             try {
                 const decodedUri = decodeURIComponent(uri);
                 const name = decodedUri.split('/').pop() || 'Unknown';
@@ -388,7 +401,7 @@ const readSectionVideosWithLogs = async (directoryUri, log, maxDepth = 5, curren
                     const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
                     log(`[D${currentDepth}] 📁 Folder: ${name} (${subEntries.length} items)`);
 
-                    const subVideos = await readSectionVideosWithLogs(uri, log, maxDepth, currentDepth + 1);
+                    const subVideos = await readSectionVideosWithLogs(uri, log, visited, maxDepth, currentDepth + 1);
                     videos.push(...subVideos);
                 } catch (dirError) {
                     log(`[D${currentDepth}] ✗ Skip: ${name}`);
@@ -407,6 +420,7 @@ const readSectionVideosWithLogs = async (directoryUri, log, maxDepth = 5, curren
 
 /**
  * Read course structure with UI logging callback
+ * LAZY LOADING: Only lists sections, doesn't scan for videos inside them
  * @param {string} directoryUri - SAF URI
  * @param {function} log - Callback to log messages to UI
  */
@@ -437,22 +451,20 @@ export const readCourseStructureWithLogs = async (directoryUri, log) => {
                     continue;
                 }
 
-                // Try to read as directory
+                // Try to read as directory - but DON'T scan for videos yet (lazy loading)
                 try {
                     const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
-                    log(`📁 Section: ${name} (${subEntries.length} items)`);
+                    log(`📁 Section: ${name} (${subEntries.length} items) - not loaded`);
 
-                    const sectionVideos = await readSectionVideosWithLogs(uri, log, 5, 0);
-                    log(`Section ${name}: ${sectionVideos.length} videos`);
-
-                    if (sectionVideos.length > 0) {
-                        sections.push({
-                            id: uri,
-                            uri,
-                            name,
-                            videos: sectionVideos,
-                        });
-                    }
+                    // Add section with loaded: false flag - videos will be loaded on demand
+                    sections.push({
+                        id: uri,
+                        uri,
+                        name,
+                        itemCount: subEntries.length,
+                        videos: [],
+                        loaded: false, // Videos not yet loaded
+                    });
                 } catch (dirError) {
                     log(`✗ Not a folder: ${name}`);
                 }
@@ -469,17 +481,40 @@ export const readCourseStructureWithLogs = async (directoryUri, log) => {
             a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
         );
 
-        const totalVideos = rootVideos.length + sections.reduce((sum, s) => sum + s.videos.length, 0);
-        log(`✓ Total: ${totalVideos} videos in ${sections.length} sections`);
+        // Only count root videos initially - section videos will be counted when loaded
+        log(`✓ Found ${rootVideos.length} root videos, ${sections.length} sections (not scanned yet)`);
 
         return {
             rootVideos,
             sections,
-            totalVideos,
+            totalVideos: rootVideos.length, // Initially just root videos
         };
     } catch (error) {
         log(`FATAL: ${error.message}`);
         return { rootVideos: [], sections: [], totalVideos: 0 };
+    }
+};
+
+/**
+ * Load videos for a specific section (on-demand loading)
+ * Called when user expands a section in CourseDetailScreen
+ * @param {string} sectionUri - SAF URI of the section folder
+ * @param {function} log - Optional callback to log messages
+ * @returns {Promise<Array>} Array of video objects
+ */
+export const loadSectionVideosWithLogs = async (sectionUri, log = () => { }) => {
+    const visited = new Set();
+    visited.add(sectionUri);
+
+    log('Loading section videos...');
+
+    try {
+        const videos = await readSectionVideosWithLogs(sectionUri, log, visited, 5, 0);
+        log(`✓ Loaded ${videos.length} videos`);
+        return videos;
+    } catch (error) {
+        log(`Error loading section: ${error.message}`);
+        return [];
     }
 };
 

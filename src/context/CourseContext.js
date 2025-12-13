@@ -107,6 +107,44 @@ export const CourseProvider = ({ children }) => {
         }));
     };
 
+    /**
+     * Update a section with its loaded videos (for lazy loading)
+     * Called when user expands a section and videos are loaded
+     */
+    const updateSectionVideos = (courseId, sectionId, videos) => {
+        setCourses(prev => prev.map(course => {
+            if (course.id !== courseId) return course;
+
+            const updatedSections = (course.sections || []).map(section => {
+                if (section.id !== sectionId) return section;
+                return {
+                    ...section,
+                    videos,
+                    loaded: true,
+                };
+            });
+
+            // Update flat videos list and recalculate totals
+            const allVideos = [
+                ...(course.rootVideos || []),
+                ...updatedSections.flatMap(s => s.videos)
+            ];
+
+            const completedCount = allVideos.filter(v => v.completed).length;
+            const progress = allVideos.length > 0
+                ? Math.round((completedCount / allVideos.length) * 100)
+                : 0;
+
+            return {
+                ...course,
+                sections: updatedSections,
+                videos: allVideos,
+                videoCount: allVideos.length,
+                progress,
+            };
+        }));
+    };
+
     return (
         <CourseContext.Provider value={{
             courses,
@@ -114,7 +152,8 @@ export const CourseProvider = ({ children }) => {
             addCourse,
             updateCourse,
             deleteCourse,
-            updateVideoProgress
+            updateVideoProgress,
+            updateSectionVideos
         }}>
             {children}
         </CourseContext.Provider>

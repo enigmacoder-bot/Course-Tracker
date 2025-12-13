@@ -10,6 +10,7 @@ import {
     Alert,
     ScrollView,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -35,6 +36,13 @@ const FolderPickerScreen = ({ navigation }) => {
     const addLog = (message) => {
         const timestamp = new Date().toLocaleTimeString();
         setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    };
+
+    // Copy logs to clipboard
+    const copyLogs = async () => {
+        const logText = debugLogs.join('\n');
+        await Clipboard.setStringAsync(logText);
+        Alert.alert('Copied', 'Debug logs copied to clipboard');
     };
 
     // Request storage access on first load
@@ -149,9 +157,14 @@ const FolderPickerScreen = ({ navigation }) => {
                 <View style={[styles.debugPanel, { backgroundColor: '#1a1a2e' }]}>
                     <View style={styles.debugHeader}>
                         <Text style={styles.debugTitle}>Debug Logs</Text>
-                        <TouchableOpacity onPress={() => setDebugLogs([])}>
-                            <Text style={styles.clearButton}>Clear</Text>
-                        </TouchableOpacity>
+                        <View style={styles.debugButtons}>
+                            <TouchableOpacity onPress={copyLogs} style={styles.debugBtn}>
+                                <Text style={styles.copyButton}>Copy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setDebugLogs([])} style={styles.debugBtn}>
+                                <Text style={styles.clearButton}>Clear</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                     <ScrollView style={styles.debugScroll}>
                         {debugLogs.map((log, index) => (
@@ -247,6 +260,17 @@ const styles = StyleSheet.create({
         color: '#00ff88',
         fontWeight: 'bold',
         fontFamily: 'monospace',
+    },
+    debugButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    debugBtn: {
+        padding: 4,
+    },
+    copyButton: {
+        color: '#6bc5ff',
+        fontSize: 12,
     },
     clearButton: {
         color: '#ff6b6b',
