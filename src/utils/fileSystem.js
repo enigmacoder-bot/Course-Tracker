@@ -196,11 +196,11 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
  * Read videos from a section (folder) with limited depth
  * This reads videos at this level and up to maxDepth deeper
  * @param {string} directoryUri - SAF URI of the section folder
- * @param {number} maxDepth - Maximum depth to recurse (default: 2)
+ * @param {number} maxDepth - Maximum depth to recurse (default: 5)
  * @param {number} currentDepth - Current recursion depth
  * @returns {Promise<Array>} Array of video objects
  */
-export const readSectionVideos = async (directoryUri, maxDepth = 2, currentDepth = 0) => {
+export const readSectionVideos = async (directoryUri, maxDepth = 5, currentDepth = 0) => {
     if (currentDepth >= maxDepth) {
         return [];
     }
@@ -253,7 +253,7 @@ export const readSectionVideos = async (directoryUri, maxDepth = 2, currentDepth
  * Read a course folder preserving its structure (sections/folders)
  * Returns: { rootVideos: [...], sections: [{ name, uri, videos: [...] }, ...] }
  * Direct subfolders (like Week 1, Week 2) become sections
- * Videos in those sections are collected up to 2 levels deep
+ * Videos in those sections are collected up to 5 levels deep
  */
 export const readCourseStructure = async (directoryUri) => {
     try {
