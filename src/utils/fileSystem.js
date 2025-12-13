@@ -519,6 +519,82 @@ export const loadSectionVideosWithLogs = async (sectionUri, log = () => { }) => 
 };
 
 /**
+ * Load folder contents - returns folders and videos SEPARATELY (not flattened)
+ * This is for the nested folder UI - preserves hierarchy
+ * @param {string} folderUri - SAF URI of the folder
+ * @param {function} log - Logging callback
+ * @returns {Promise<{folders: Array, videos: Array}>}
+ */
+export const loadFolderContents = async (folderUri, log = () => { }) => {
+    log('Loading folder contents...');
+
+    try {
+        const entries = await StorageAccessFramework.readDirectoryAsync(folderUri);
+        log(`Found ${entries.length} entries`);
+
+        const folders = [];
+        const videos = [];
+
+        for (const uri of entries) {
+            try {
+                const decodedUri = decodeURIComponent(uri);
+                const name = decodedUri.split('/').pop() || 'Unknown';
+
+                // Check if it's a video file
+                if (isVideoFile(name)) {
+                    log(`✓ Video: ${name}`);
+                    videos.push({
+                        id: uri,
+                        uri,
+                        type: 'video',
+                        filename: name,
+                        title: name.replace(/\.[^/.]+$/, ''),
+                        completed: false,
+                        progress: 0,
+                    });
+                    continue;
+                }
+
+                // Try to read as directory (to verify it IS a folder)
+                try {
+                    const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
+                    log(`📁 Folder: ${name} (${subEntries.length} items)`);
+                    folders.push({
+                        id: uri,
+                        uri,
+                        type: 'folder',
+                        name,
+                        itemCount: subEntries.length,
+                        children: [], // Will be loaded on demand
+                        loaded: false,
+                    });
+                } catch (dirError) {
+                    // Not a folder, not a video - skip (e.g., text files, images)
+                    log(`✗ Skip non-media: ${name}`);
+                }
+            } catch (e) {
+                log(`Error: ${e.message}`);
+            }
+        }
+
+        // Sort folders and videos alphabetically
+        folders.sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        );
+        videos.sort((a, b) =>
+            a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        log(`✓ Found ${folders.length} folders, ${videos.length} videos`);
+
+        return { folders, videos };
+    } catch (error) {
+        log(`Error: ${error.message}`);
+        return { folders: [], videos: [] };
+    }
+};
+
+/**
  * Get folder name from SAF URI
  */
 export const getFolderName = (directoryUri) => {

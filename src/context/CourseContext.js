@@ -108,26 +108,61 @@ export const CourseProvider = ({ children }) => {
     };
 
     /**
-     * Update a section with its loaded videos (for lazy loading)
-     * Called when user expands a section and videos are loaded
+     * Update a section with its loaded contents (folders and videos)
+     * For nested folder UI - stores both subfolders and videos
      */
-    const updateSectionVideos = (courseId, sectionId, videos) => {
+    const updateSectionVideos = (courseId, sectionId, contents) => {
         setCourses(prev => prev.map(course => {
             if (course.id !== courseId) return course;
 
-            const updatedSections = (course.sections || []).map(section => {
-                if (section.id !== sectionId) return section;
-                return {
-                    ...section,
-                    videos,
-                    loaded: true,
-                };
-            });
+            // Helper function to recursively find and update a section/folder
+            const updateSection = (sections) => {
+                return sections.map(section => {
+                    if (section.id === sectionId) {
+                        // This is the section to update
+                        return {
+                            ...section,
+                            children: [
+                                ...(contents.folders || []),
+                                ...(contents.videos || []),
+                            ],
+                            videos: contents.videos || [],
+                            subfolders: contents.folders || [],
+                            loaded: true,
+                        };
+                    }
+                    // If this section has children that are folders, search recursively
+                    if (section.children && section.children.length > 0) {
+                        return {
+                            ...section,
+                            children: updateSection(section.children.filter(c => c.type === 'folder')),
+                        };
+                    }
+                    return section;
+                });
+            };
 
-            // Update flat videos list and recalculate totals
+            const updatedSections = updateSection(course.sections || []);
+
+            // Collect all videos recursively for progress tracking
+            const collectVideos = (items) => {
+                let videos = [];
+                for (const item of items) {
+                    if (item.type === 'video') {
+                        videos.push(item);
+                    } else if (item.videos) {
+                        videos.push(...item.videos);
+                    }
+                    if (item.children) {
+                        videos.push(...collectVideos(item.children));
+                    }
+                }
+                return videos;
+            };
+
             const allVideos = [
                 ...(course.rootVideos || []),
-                ...updatedSections.flatMap(s => s.videos)
+                ...collectVideos(updatedSections),
             ];
 
             const completedCount = allVideos.filter(v => v.completed).length;

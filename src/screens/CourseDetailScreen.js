@@ -53,16 +53,16 @@ const CourseDetailScreen = ({ navigation, route }) => {
     const hasSections = course.sections && course.sections.length > 0;
     const hasRootVideos = course.rootVideos && course.rootVideos.length > 0;
 
-    // Toggle section expand/collapse - loads videos on first expand
+    // Toggle section/folder expand/collapse - loads contents on first expand
     const toggleSection = async (section) => {
         const sectionId = section.id;
-        const isCurrentlyExpanded = expandedSections[sectionId] === true; // Default to collapsed
+        const isCurrentlyExpanded = expandedSections[sectionId] === true;
 
-        addLog(`Toggle section: ${section.name}, currently expanded: ${isCurrentlyExpanded}, loaded: ${section.loaded}`);
+        addLog(`Toggle: ${section.name}, expanded: ${isCurrentlyExpanded}, loaded: ${section.loaded}`);
 
         // If collapsing, just toggle
         if (isCurrentlyExpanded) {
-            addLog('Collapsing section');
+            addLog('Collapsing');
             setExpandedSections(prev => ({
                 ...prev,
                 [sectionId]: false,
@@ -70,28 +70,32 @@ const CourseDetailScreen = ({ navigation, route }) => {
             return;
         }
 
-        // If expanding and not loaded, load videos first
+        // If expanding and not loaded, load folder contents first
         if (!section.loaded) {
-            addLog(`Loading videos from: ${section.uri?.substring(0, 60)}...`);
+            addLog(`Loading from: ${section.uri?.substring(0, 50)}...`);
             setLoadingSections(prev => ({ ...prev, [sectionId]: true }));
 
             try {
-                const videos = await loadSectionVideosWithLogs(section.uri, addLog);
-                addLog(`Loaded ${videos.length} videos, updating context...`);
-                updateSectionVideos(course.id, sectionId, videos);
+                // Use loadFolderContents to get BOTH folders and videos
+                const { loadFolderContents } = require('../utils/fileSystem');
+                const contents = await loadFolderContents(section.uri, addLog);
+                addLog(`Found ${contents.folders.length} folders, ${contents.videos.length} videos`);
+                updateSectionVideos(course.id, sectionId, contents);
                 addLog('Context updated!');
             } catch (error) {
                 addLog(`ERROR: ${error.message}`);
-                Alert.alert('Error', `Failed to load section videos: ${error.message}`);
+                Alert.alert('Error', `Failed to load: ${error.message}`);
             } finally {
                 setLoadingSections(prev => ({ ...prev, [sectionId]: false }));
             }
         } else {
-            addLog(`Section already loaded with ${section.videos?.length || 0} videos`);
+            const subfolders = section.subfolders?.length || 0;
+            const videos = section.videos?.length || 0;
+            addLog(`Already loaded: ${subfolders} folders, ${videos} videos`);
         }
 
         // Expand the section
-        addLog('Expanding section');
+        addLog('Expanding');
         setExpandedSections(prev => ({
             ...prev,
             [sectionId]: true,
@@ -176,12 +180,13 @@ const CourseDetailScreen = ({ navigation, route }) => {
         }
     };
 
-    // Render a video item
-    const renderVideoItem = (video, index, sectionName = null) => {
+    // Render a video item with depth-based indentation
+    const renderVideoItem = (video, index, depth = 0) => {
         const isCompleted = video.completed;
+        const indentMargin = depth * 24; // 24px per depth level
 
         return (
-            <View style={[styles.videoRow, { borderBottomColor: colors.border }]}>
+            <View style={[styles.videoRow, { borderBottomColor: colors.border, marginLeft: indentMargin }]}>
                 {/* Play button */}
                 <TouchableOpacity
                     style={[styles.videoNum, { backgroundColor: isCompleted ? colors.success + '20' : colors.primary + '20' }]}
@@ -225,20 +230,22 @@ const CourseDetailScreen = ({ navigation, route }) => {
         );
     };
 
-    // Render a section header (folder like Week 1, Week 2)
-    const renderSectionHeader = (section) => {
+    // Render a folder header with depth-based indentation
+    const renderSectionHeader = (section, depth = 0) => {
         const isExpanded = expandedSections[section.id] === true;
         const isLoading = loadingSections[section.id];
         const isLoaded = section.loaded;
+        const indentMargin = depth * 24; // 24px per depth level
 
         // Calculate stats based on loaded state
+        const subfolderCount = section.subfolders?.length || 0;
+        const videoCount = section.videos?.length || 0;
         const sectionCompleted = section.videos?.filter(v => v.completed).length || 0;
-        const sectionTotal = section.videos?.length || 0;
-        const sectionProgress = sectionTotal > 0 ? Math.round((sectionCompleted / sectionTotal) * 100) : 0;
+        const sectionProgress = videoCount > 0 ? Math.round((sectionCompleted / videoCount) * 100) : 0;
 
         return (
             <TouchableOpacity
-                style={[styles.sectionHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.sectionHeader, { backgroundColor: colors.surface, borderColor: colors.border, marginLeft: indentMargin }]}
                 onPress={() => toggleSection(section)}
                 activeOpacity={0.7}
                 disabled={isLoading}
@@ -256,7 +263,9 @@ const CourseDetailScreen = ({ navigation, route }) => {
                     </Text>
                     <Text style={[styles.sectionMeta, { color: colors.textSecondary }]}>
                         {isLoaded
-                            ? `${sectionCompleted}/${sectionTotal} videos • ${sectionProgress}%`
+                            ? (subfolderCount > 0
+                                ? `${subfolderCount} folders, ${videoCount} videos`
+                                : `${sectionCompleted}/${videoCount} videos • ${sectionProgress}%`)
                             : `${section.itemCount || '?'} items • Tap to load`
                         }
                     </Text>
@@ -272,35 +281,51 @@ const CourseDetailScreen = ({ navigation, route }) => {
         );
     };
 
-    // Build list data with sections
+    // Build list data recursively for nested folders
     const buildListData = () => {
         const data = [];
 
         // Add root videos first (if any)
         if (hasRootVideos) {
             course.rootVideos.forEach((video, index) => {
-                data.push({ type: 'video', video, index });
+                data.push({ type: 'video', video, index, depth: 0 });
             });
         }
 
-        // Add sections with their videos
-        if (hasSections) {
-            course.sections.forEach(section => {
-                data.push({ type: 'section', section });
+        // Recursive function to add folders and their contents
+        const addFolderContents = (folder, depth) => {
+            // Add the folder itself
+            data.push({ type: 'folder', folder, depth });
 
-                // If expanded AND loaded, add section's videos
-                if (expandedSections[section.id] === true && section.videos?.length > 0) {
-                    section.videos.forEach((video, index) => {
-                        data.push({ type: 'sectionVideo', video, index, sectionId: section.id });
+            // If expanded, add its contents
+            if (expandedSections[folder.id] === true && folder.loaded) {
+                // Add subfolders first
+                if (folder.subfolders && folder.subfolders.length > 0) {
+                    folder.subfolders.forEach(subfolder => {
+                        addFolderContents(subfolder, depth + 1);
                     });
                 }
+
+                // Then add videos
+                if (folder.videos && folder.videos.length > 0) {
+                    folder.videos.forEach((video, index) => {
+                        data.push({ type: 'video', video, index, depth: depth + 1, folderId: folder.id });
+                    });
+                }
+            }
+        };
+
+        // Add sections (top-level folders)
+        if (hasSections) {
+            course.sections.forEach(section => {
+                addFolderContents(section, 0);
             });
         }
 
         // Fallback: if no sections structure, show flat videos
         if (!hasSections && !hasRootVideos && allVideos.length > 0) {
             allVideos.forEach((video, index) => {
-                data.push({ type: 'video', video, index });
+                data.push({ type: 'video', video, index, depth: 0 });
             });
         }
 
@@ -388,15 +413,14 @@ const CourseDetailScreen = ({ navigation, route }) => {
                 <FlatList
                     data={listData}
                     keyExtractor={(item, index) => {
-                        if (item.type === 'section') return `section-${item.section.id}`;
-                        if (item.type === 'sectionVideo') return `sv-${item.sectionId}-${item.video.id}`;
-                        return `video-${item.video.id}`;
+                        if (item.type === 'folder') return `folder-${item.folder.id}`;
+                        return `video-${item.video?.id || index}`;
                     }}
                     renderItem={({ item }) => {
-                        if (item.type === 'section') {
-                            return renderSectionHeader(item.section);
+                        if (item.type === 'folder') {
+                            return renderSectionHeader(item.folder, item.depth);
                         }
-                        return renderVideoItem(item.video, item.index);
+                        return renderVideoItem(item.video, item.index, item.depth);
                     }}
                     contentContainerStyle={styles.listContent}
                 />
