@@ -194,7 +194,7 @@ export const readVideoFiles = async (directoryUri, maxDepth = 10, currentDepth =
 
 /**
  * Read videos from a section (folder) with limited depth
- * This reads videos at this level and up to maxDepth deeper
+ * Uses getInfoAsync to properly detect directories (SAF-compliant approach)
  * @param {string} directoryUri - SAF URI of the section folder
  * @param {number} maxDepth - Maximum depth to recurse (default: 5)
  * @param {number} currentDepth - Current recursion depth
@@ -209,30 +209,38 @@ export const readSectionVideos = async (directoryUri, maxDepth = 5, currentDepth
         const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
         const videos = [];
 
+        // Process entries - use getInfoAsync to properly detect directories
         await Promise.all(
             entries.map(async (uri) => {
-                const decodedUri = decodeURIComponent(uri);
-                const name = decodedUri.split('/').pop() || 'Unknown';
-
-                // Check if it's a video file
-                if (isVideoFile(name)) {
-                    videos.push({
-                        id: uri,
-                        uri,
-                        filename: name,
-                        title: name.replace(/\.[^/.]+$/, ''),
-                        completed: false,
-                        progress: 0,
-                    });
-                    return;
-                }
-
-                // Try to recurse into subdirectory (but respect maxDepth)
                 try {
-                    const subVideos = await readSectionVideos(uri, maxDepth, currentDepth + 1);
-                    videos.push(...subVideos);
+                    const decodedUri = decodeURIComponent(uri);
+                    const name = decodedUri.split('/').pop() || 'Unknown';
+
+                    // Check if it's a video file by extension first (faster than getInfoAsync)
+                    if (isVideoFile(name)) {
+                        videos.push({
+                            id: uri,
+                            uri,
+                            filename: name,
+                            title: name.replace(/\.[^/.]+$/, ''),
+                            completed: false,
+                            progress: 0,
+                        });
+                        return;
+                    }
+
+                    // Use getInfoAsync to check if it's a directory
+                    const info = await FileSystem.getInfoAsync(uri);
+
+                    if (info.exists && info.isDirectory) {
+                        // It's a directory - recurse into it
+                        const subVideos = await readSectionVideos(uri, maxDepth, currentDepth + 1);
+                        videos.push(...subVideos);
+                    }
+                    // If it's a file but not a video, skip it
                 } catch (e) {
-                    // Not a directory, skip
+                    // Skip items that can't be processed
+                    console.log('Skipping item:', uri, e.message);
                 }
             })
         );
@@ -266,40 +274,41 @@ export const readCourseStructure = async (directoryUri) => {
         // Process all entries in parallel
         await Promise.all(
             entries.map(async (uri) => {
-                const decodedUri = decodeURIComponent(uri);
-                const name = decodedUri.split('/').pop() || 'Unknown';
-
-                // Check if it's a video file at root level
-                if (isVideoFile(name)) {
-                    rootVideos.push({
-                        id: uri,
-                        uri,
-                        filename: name,
-                        title: name.replace(/\.[^/.]+$/, ''),
-                        completed: false,
-                        progress: 0,
-                    });
-                    return;
-                }
-
-                // Try to read as directory - this becomes a section
                 try {
-                    // First verify it's a directory
-                    await StorageAccessFramework.readDirectoryAsync(uri);
+                    const decodedUri = decodeURIComponent(uri);
+                    const name = decodedUri.split('/').pop() || 'Unknown';
 
-                    // Read videos from this section (with limited depth)
-                    const sectionVideos = await readSectionVideos(uri, 2, 0);
-
-                    if (sectionVideos.length > 0) {
-                        sections.push({
+                    // Check if it's a video file at root level
+                    if (isVideoFile(name)) {
+                        rootVideos.push({
                             id: uri,
                             uri,
-                            name,
-                            videos: sectionVideos,
+                            filename: name,
+                            title: name.replace(/\.[^/.]+$/, ''),
+                            completed: false,
+                            progress: 0,
                         });
+                        return;
+                    }
+
+                    // Use getInfoAsync to check if it's a directory
+                    const info = await FileSystem.getInfoAsync(uri);
+
+                    if (info.exists && info.isDirectory) {
+                        // Read videos from this section (with depth limit of 5)
+                        const sectionVideos = await readSectionVideos(uri, 5, 0);
+
+                        if (sectionVideos.length > 0) {
+                            sections.push({
+                                id: uri,
+                                uri,
+                                name,
+                                videos: sectionVideos,
+                            });
+                        }
                     }
                 } catch (e) {
-                    // Not a directory, skip
+                    console.log('Skipping entry:', uri, e.message);
                 }
             })
         );
