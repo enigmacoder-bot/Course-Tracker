@@ -503,8 +503,8 @@ export const readCourseStructureWithLogs = async (directoryUri, log) => {
  * @returns {Promise<Array>} Array of video objects
  */
 export const loadSectionVideosWithLogs = async (sectionUri, log = () => { }) => {
+    // DON'T add sectionUri to visited here - readSectionVideosWithLogs will add it
     const visited = new Set();
-    visited.add(sectionUri);
 
     log('Loading section videos...');
 
