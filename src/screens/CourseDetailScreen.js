@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Alert, SectionList, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Alert, SectionList, Modal, TextInput, ActivityIndicator, ScrollView, Share } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCourse } from '../context/CourseContext';
@@ -14,9 +14,27 @@ const CourseDetailScreen = ({ navigation, route }) => {
     const course = courses.find(c => c.id === courseId);
 
     const [expandedSections, setExpandedSections] = useState({});
-    const [loadingSections, setLoadingSections] = useState({}); // Track which sections are loading
+    const [loadingSections, setLoadingSections] = useState({});
     const [renameModalVisible, setRenameModalVisible] = useState(false);
     const [newName, setNewName] = useState('');
+
+    // Debug logging
+    const [debugLogs, setDebugLogs] = useState([]);
+    const [showDebug, setShowDebug] = useState(false);
+
+    const addLog = (message) => {
+        const timestamp = new Date().toLocaleTimeString();
+        setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    };
+
+    const shareLogs = async () => {
+        const logText = debugLogs.join('\n');
+        try {
+            await Share.share({ message: logText, title: 'Debug Logs' });
+        } catch (err) {
+            Alert.alert('Error', 'Could not share logs');
+        }
+    };
 
     useEffect(() => {
         if (!course) {
@@ -38,10 +56,13 @@ const CourseDetailScreen = ({ navigation, route }) => {
     // Toggle section expand/collapse - loads videos on first expand
     const toggleSection = async (section) => {
         const sectionId = section.id;
-        const isCurrentlyExpanded = expandedSections[sectionId] !== false;
+        const isCurrentlyExpanded = expandedSections[sectionId] === true; // Default to collapsed
+
+        addLog(`Toggle section: ${section.name}, currently expanded: ${isCurrentlyExpanded}, loaded: ${section.loaded}`);
 
         // If collapsing, just toggle
         if (isCurrentlyExpanded) {
+            addLog('Collapsing section');
             setExpandedSections(prev => ({
                 ...prev,
                 [sectionId]: false,
@@ -51,19 +72,26 @@ const CourseDetailScreen = ({ navigation, route }) => {
 
         // If expanding and not loaded, load videos first
         if (!section.loaded) {
+            addLog(`Loading videos from: ${section.uri?.substring(0, 60)}...`);
             setLoadingSections(prev => ({ ...prev, [sectionId]: true }));
 
             try {
-                const videos = await loadSectionVideosWithLogs(section.uri, (msg) => console.log(msg));
+                const videos = await loadSectionVideosWithLogs(section.uri, addLog);
+                addLog(`Loaded ${videos.length} videos, updating context...`);
                 updateSectionVideos(course.id, sectionId, videos);
+                addLog('Context updated!');
             } catch (error) {
-                Alert.alert('Error', 'Failed to load section videos');
+                addLog(`ERROR: ${error.message}`);
+                Alert.alert('Error', `Failed to load section videos: ${error.message}`);
             } finally {
                 setLoadingSections(prev => ({ ...prev, [sectionId]: false }));
             }
+        } else {
+            addLog(`Section already loaded with ${section.videos?.length || 0} videos`);
         }
 
         // Expand the section
+        addLog('Expanding section');
         setExpandedSections(prev => ({
             ...prev,
             [sectionId]: true,
@@ -260,8 +288,8 @@ const CourseDetailScreen = ({ navigation, route }) => {
             course.sections.forEach(section => {
                 data.push({ type: 'section', section });
 
-                // If expanded, add section's videos
-                if (expandedSections[section.id] !== false) {
+                // If expanded AND loaded, add section's videos
+                if (expandedSections[section.id] === true && section.videos?.length > 0) {
                     section.videos.forEach((video, index) => {
                         data.push({ type: 'sectionVideo', video, index, sectionId: section.id });
                     });
@@ -292,6 +320,9 @@ const CourseDetailScreen = ({ navigation, route }) => {
                         <Feather name="arrow-left" color="#FFF" size={24} />
                     </TouchableOpacity>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity onPress={() => setShowDebug(!showDebug)} style={styles.backBtn}>
+                            <Feather name="terminal" color={showDebug ? '#FFD700' : '#FFF'} size={22} />
+                        </TouchableOpacity>
                         <TouchableOpacity onPress={() => {
                             setNewName(course.title);
                             setRenameModalVisible(true);
@@ -317,6 +348,31 @@ const CourseDetailScreen = ({ navigation, route }) => {
                     </View>
                 </View>
             </View>
+
+            {/* Debug Log Panel */}
+            {showDebug && (
+                <View style={styles.debugPanel}>
+                    <View style={styles.debugHeader}>
+                        <Text style={styles.debugTitle}>Debug Logs</Text>
+                        <View style={styles.debugButtons}>
+                            <TouchableOpacity onPress={shareLogs} style={styles.debugBtn}>
+                                <Text style={styles.shareButton}>Share</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setDebugLogs([])} style={styles.debugBtn}>
+                                <Text style={styles.clearButton}>Clear</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                    <ScrollView style={styles.debugScroll} nestedScrollEnabled>
+                        {debugLogs.map((log, index) => (
+                            <Text key={index} style={styles.debugLog}>{log}</Text>
+                        ))}
+                        {debugLogs.length === 0 && (
+                            <Text style={styles.debugLog}>Tap a section to see logs...</Text>
+                        )}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* Content List */}
             <View style={[styles.listSection, { backgroundColor: colors.background }]}>
@@ -452,6 +508,52 @@ const styles = StyleSheet.create({
     input: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 24, fontSize: 16 },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
     modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+
+    // Debug panel styles
+    debugPanel: {
+        maxHeight: 180,
+        backgroundColor: '#1a1a2e',
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+    },
+    debugHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+    },
+    debugTitle: {
+        color: '#00ff88',
+        fontWeight: 'bold',
+        fontFamily: 'monospace',
+    },
+    debugButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    debugBtn: {
+        padding: 4,
+    },
+    shareButton: {
+        color: '#6bc5ff',
+        fontSize: 12,
+    },
+    clearButton: {
+        color: '#ff6b6b',
+        fontSize: 12,
+    },
+    debugScroll: {
+        padding: 8,
+        maxHeight: 120,
+    },
+    debugLog: {
+        color: '#a0ffa0',
+        fontSize: 11,
+        fontFamily: 'monospace',
+        marginBottom: 4,
+    },
 });
 
 export default CourseDetailScreen;
