@@ -108,53 +108,52 @@ export const CourseProvider = ({ children }) => {
     };
 
     /**
-     * Update a section with its loaded contents (folders and videos)
-     * For nested folder UI - stores both subfolders and videos
+     * Update a section/folder with its loaded contents (subfolders and videos)
+     * For nested folder UI - handles any depth of nesting
      */
     const updateSectionVideos = (courseId, sectionId, contents) => {
         setCourses(prev => prev.map(course => {
             if (course.id !== courseId) return course;
 
-            // Helper function to recursively find and update a section/folder
-            const updateSection = (sections) => {
-                return sections.map(section => {
-                    if (section.id === sectionId) {
-                        // This is the section to update
+            // Recursively find and update the folder with matching sectionId
+            const updateFolder = (folders) => {
+                if (!folders) return folders;
+
+                return folders.map(folder => {
+                    if (folder.id === sectionId) {
+                        // Found the folder to update
                         return {
-                            ...section,
-                            children: [
-                                ...(contents.folders || []),
-                                ...(contents.videos || []),
-                            ],
+                            ...folder,
                             videos: contents.videos || [],
                             subfolders: contents.folders || [],
                             loaded: true,
                         };
                     }
-                    // If this section has children that are folders, search recursively
-                    if (section.children && section.children.length > 0) {
+
+                    // If this folder has subfolders, search recursively
+                    if (folder.subfolders && folder.subfolders.length > 0) {
                         return {
-                            ...section,
-                            children: updateSection(section.children.filter(c => c.type === 'folder')),
+                            ...folder,
+                            subfolders: updateFolder(folder.subfolders),
                         };
                     }
-                    return section;
+
+                    return folder;
                 });
             };
 
-            const updatedSections = updateSection(course.sections || []);
+            const updatedSections = updateFolder(course.sections || []);
 
             // Collect all videos recursively for progress tracking
-            const collectVideos = (items) => {
+            const collectVideos = (folders) => {
+                if (!folders) return [];
                 let videos = [];
-                for (const item of items) {
-                    if (item.type === 'video') {
-                        videos.push(item);
-                    } else if (item.videos) {
-                        videos.push(...item.videos);
+                for (const folder of folders) {
+                    if (folder.videos) {
+                        videos.push(...folder.videos);
                     }
-                    if (item.children) {
-                        videos.push(...collectVideos(item.children));
+                    if (folder.subfolders) {
+                        videos.push(...collectVideos(folder.subfolders));
                     }
                 }
                 return videos;
