@@ -454,7 +454,8 @@ export const readCourseStructureWithLogs = async (directoryUri, log) => {
                 // Try to read as directory - but DON'T scan for videos yet (lazy loading)
                 try {
                     const subEntries = await StorageAccessFramework.readDirectoryAsync(uri);
-                    log(`📁 Section: ${name} (${subEntries.length} items) - not loaded`);
+                    log(`📁 Section: ${name} (${subEntries.length} items)`);
+                    log(`   URI hash: ${uri.slice(-40)}`); // Last 40 chars to compare later
 
                     // Add section with loaded: false flag - videos will be loaded on demand
                     sections.push({
@@ -462,8 +463,9 @@ export const readCourseStructureWithLogs = async (directoryUri, log) => {
                         uri,
                         name,
                         itemCount: subEntries.length,
+                        subfolders: [], // Initialize as empty array
                         videos: [],
-                        loaded: false, // Videos not yet loaded
+                        loaded: false,
                     });
                 } catch (dirError) {
                     log(`✗ Not a folder: ${name}`);
@@ -526,11 +528,15 @@ export const loadSectionVideosWithLogs = async (sectionUri, log = () => { }) => 
  * @returns {Promise<{folders: Array, videos: Array}>}
  */
 export const loadFolderContents = async (folderUri, log = () => { }) => {
-    log('Loading folder contents...');
+    // Log the full URI for debugging - this helps identify if we're reading the wrong folder
+    const decodedFolderUri = decodeURIComponent(folderUri);
+    const folderName = decodedFolderUri.split('/').pop() || 'Unknown';
+    log(`Loading: "${folderName}"`);
+    log(`URI hash: ${folderUri.slice(-40)}`); // Last 40 chars for ID
 
     try {
         const entries = await StorageAccessFramework.readDirectoryAsync(folderUri);
-        log(`Found ${entries.length} entries`);
+        log(`Found ${entries.length} entries in "${folderName}":`);
 
         const folders = [];
         const videos = [];

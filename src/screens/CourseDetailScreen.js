@@ -72,7 +72,16 @@ const CourseDetailScreen = ({ navigation, route }) => {
 
         // If expanding and not loaded, load folder contents first
         if (!section.loaded) {
-            addLog(`Loading from: ${section.uri?.substring(0, 50)}...`);
+            // CRITICAL DEBUG: Compare section URI vs course ID (parent folder)
+            const sectionHash = section.uri?.slice(-40) || 'NO_URI';
+            const courseHash = course.id?.slice(-40) || 'NO_COURSE_ID';
+            addLog(`Section URI hash: ${sectionHash}`);
+            addLog(`Course (parent) hash: ${courseHash}`);
+
+            if (section.uri === course.id) {
+                addLog('⚠️ BUG DETECTED: Section URI equals parent folder URI!');
+            }
+
             setLoadingSections(prev => ({ ...prev, [sectionId]: true }));
 
             try {
